@@ -7,4 +7,5 @@ In the following days more updates will be uploaded, even a Metasploit version.
 To develop the exploit, I have based on those created by:<br>
 	- Fuzzysecurity: https://github.com/FuzzySecurity/PowerShell-Suite/tree/master/Bypass-UAC.<br>
 	- Cn33liz: https://github.com/Cn33liz/TpmInitUACBypass.<br>
+	- hFireF0X: https://github.com/hfiref0x/UACME
 Many thanks to you!

