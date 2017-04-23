@@ -7,23 +7,31 @@ In the following days more updates will be uploaded, even a Metasploit version.
 <h3>1.1. VULNERABILITY SEARCH</h3>
 To develop a new bypass UAC, first we have to find a vulnerability on the system and, to be more precise, a vulnerability in an auto-elevate process. To get a list of such processes we used the "Sysinternals" tool "Strings". After that, we could see some auto-elevate processes like "sysprep.exe", "cliconfig.exe", "inetmgr.exe", "consent.exe" or "CompMgmtLauncher.exe" that had (some of them still have) vulnerabilities that allow the execution of a "bypass UAC". So we start to study how other auto-elevate processes worked with the "Sysinternals" application "Process Monitor" ("ProcMon"), but focusing on the process "dccw.exe".<br>
 <br>
+
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/AutoElevate_Processes.png)
+
 <br>
 <br>
 However, before starting with "ProcMon", first we check the manifest of such applications with another "Sysinternals" application called "Sigcheck", and, of course, in our case, "dccw.exe" is an auto-elevate process.<br>
 <br>
+
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/autoElevation_confirmed.png)
+
 <br>
 <br>
 Then, we could start the execution flow of "dccw.exe" with "ProcMon" to see in something strange occurs, something we checked immediately. At some point, if we have executed "dccw.exe" as a 64 bits process in a 64 bits Windows machine it looks for the directory "C:\Windows\System32\dccw.exe.Local\" to load a specific DLL called "GdiPlus.dll", the same as it were executed in a 32 bits Windows machine, whereas if we execute it as a 32 bits in the same machine, the process will look for the directory "C:\Windows\SysWOW64\dccw.exe.Local\". Then, due to the fact that it does not exist (fig …), the process always looks for a folder in the path "C:\Windows\WinSxS\" to get the desired DLL, this folder has a name with the following structure:<br>
 [architecture]_microsoft.windows.gdiplus_[sequencial_code]_[Windows_version]_none_[sequencial_number]<br>
 <br>
+
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_dotLocal_notFound.png)
+
 <br>
 <br>
 If we take a look into "WinSxS" we could see more than one folder that matches with this structure, this means that "dccw.exe" can load the desired DLL from any of these folders. The only thing we are sure is that if the application is invoked as a 32 bits process, the folder name will start with the string "x86", while if we execute it as a 64 bits process, its name will start with the string "amd64".<br>
 <br>
+
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/gdiplus_folders.png)
+
 <br>
 <br>
 This situation can be abused to perform a DLL hijacking and then execute code with high integrity without prompting for consent.<br>
@@ -32,7 +40,9 @@ This situation can be abused to perform a DLL hijacking and then execute code wi
 Once we have found some error during the execution of an auto-elevate process we need to verify whether it can be abused or not. To do this we just will create the folder "dccw.exe.Local" in the desired path and into that folder we are going to create the folders located in "WinSxS" that could be invoked by the process, but without the DLL stored in that folders.<br>
 Now, if we execute "dccw.exe" we will see that it has found the folder "dccw.exe.Local" and one of the "WinSxS" folders, but not the desired DLL, something that throws an error. Therefore, the vulnerability has been verified.<br>
 <br>
+
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_vuln_checking.png)
+
 <br>
 <h3>1.3.EXPLOIT DEVELOPMENT</h3>
 At this point, we already know that we can perform a bypass UAC against "dccw.exe", but how?
@@ -68,7 +78,9 @@ To execute the exploit you must point out the Windows architecture as argument, 
 &emsp;- C:\Users\L3cr0f> DccwBypassUAC.exe x64<br>
 &emsp;- C:\Users\L3cr0f> DccwBypassUAC.exe x86<br>
 <br>
+
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/bypass_executed.png)
+
 <br>
 <h2>Acknowledgements</h2>
 To develop the exploit, I have based on those created by:<br>
