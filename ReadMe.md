@@ -11,13 +11,11 @@ To develop a new bypass UAC, first we have to find a vulnerability on the system
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/AutoElevate_Processes.png)
 
 <br>
-<br>
 However, before starting with "ProcMon", first we check the manifest of such applications with another "Sysinternals" application called "Sigcheck", and, of course, in our case, "dccw.exe" is an auto-elevate process.<br>
 <br>
 
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/autoElevation_confirmed.png)
 
-<br>
 <br>
 Then, we could start the execution flow of "dccw.exe" with "ProcMon" to see in something strange occurs, something we checked immediately. At some point, if we have executed "dccw.exe" as a 64 bits process in a 64 bits Windows machine it looks for the directory "C:\Windows\System32\dccw.exe.Local\" to load a specific DLL called "GdiPlus.dll", the same as it were executed in a 32 bits Windows machine, whereas if we execute it as a 32 bits in the same machine, the process will look for the directory "C:\Windows\SysWOW64\dccw.exe.Local\". Then, due to the fact that it does not exist (fig …), the process always looks for a folder in the path "C:\Windows\WinSxS\" to get the desired DLL, this folder has a name with the following structure:<br>
 [architecture]_microsoft.windows.gdiplus_[sequencial_code]_[Windows_version]_none_[sequencial_number]<br>
@@ -26,13 +24,11 @@ Then, we could start the execution flow of "dccw.exe" with "ProcMon" to see in s
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_dotLocal_notFound.png)
 
 <br>
-<br>
 If we take a look into "WinSxS" we could see more than one folder that matches with this structure, this means that "dccw.exe" can load the desired DLL from any of these folders. The only thing we are sure is that if the application is invoked as a 32 bits process, the folder name will start with the string "x86", while if we execute it as a 64 bits process, its name will start with the string "amd64".<br>
 <br>
 
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/gdiplus_folders.png)
 
-<br>
 <br>
 This situation can be abused to perform a DLL hijacking and then execute code with high integrity without prompting for consent.<br>
 <br>
@@ -43,7 +39,6 @@ Now, if we execute "dccw.exe" we will see that it has found the folder "dccw.exe
 
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_vuln_checking.png)
 
-<br>
 <h3>1.3.EXPLOIT DEVELOPMENT</h3>
 At this point, we already know that we can perform a bypass UAC against "dccw.exe", but how?
 <br>
@@ -81,7 +76,6 @@ To execute the exploit you must point out the Windows architecture as argument, 
 
 ![alt tag](https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/bypass_executed.png)
 
-<br>
 <h2>Acknowledgements</h2>
 To develop the exploit, I have based on those created by:<br>
 &emsp;- Fuzzysecurity: https://github.com/FuzzySecurity/PowerShell-Suite/tree/master/Bypass-UAC.<br>
