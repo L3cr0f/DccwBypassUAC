@@ -33,6 +33,7 @@ In the following days more updates will be uploaded, even a Metasploit version.
 
 <h3>1.2. Vulnerability Verification</h3>
 <p align="justify">Once we have found some error during the execution of an auto-elevate process we need to verify whether it can be abused or not. To do this we just will create the folder "dccw.exe.Local" in the desired path and into that folder we are going to create the folders located in "WinSxS" that could be invoked by the process, but without the DLL stored in that folders.<br>
+
 Now, if we execute "dccw.exe" we will see that it has found the folder "dccw.exe.Local" and one of the "WinSxS" folders, but not the desired DLL, something that throws an error. This is what we expected, due to that situation can be exploited by an attacker by means of a "DLL hijacking" and then, executing malicious code with high integrity.</p>
 
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_vuln_checking.png">
@@ -42,6 +43,7 @@ Now, if we execute "dccw.exe" we will see that it has found the folder "dccw.exe
 
 <h4>1.3.1. Method</h4>
 <p align="justify">Well, we can adapt the method developed by <a href="https://www.pretentiousname.com/misc/win7_uac_whitelist2.html" target="_blank">Leo Davidson</a> to exploit the discovered vulnerability. The problem of that method is the process injection that is performed to invoke the "IFileOperation" COM object, which can be detected by some antivirus software, so a better approach to use it is that one called "Masquerade PEB" developed by <a href="https://www.fuzzysecurity.com/tutorials/27.html" target="_blank">FuzzySecurity</a> and used by Cn33liz in its own bypass UAC.<br>
+
 Also, we have to modify the way "IFileOperation" is invoked in newer Windows 10 versions, since Leo Davidson method triggers UAC from build 15002. So the way we have to invoke such operation is the same as the original, but without the operation flags "FOF_SILENT", "FOFX_SHOWELEVATIONPROMPT" and "FOF_NOERRORUI".</p>
 
 <h4>1.3.2.Initial Checks</h4>
@@ -49,15 +51,22 @@ Also, we have to modify the way "IFileOperation" is invoked in newer Windows 10 
 
 <h4>1.3.3. Interoperability</h4>
 <p align="justify">When an exploit is developed is important that can work in as many systems as possible, this includes 32 bits Windows systems. To achieve this, we need to compile our exploit for such systems, since we can also execute it in 64 bits systems.<br>
+
 When our 32 bits exploit is executed in a 64 bits Windows machine, the way "dccw.exe" operates is a bit different due to the invocation of WOW64 (Windows subsystem that allows 64 bits machines to run 32 bits applications). This means the folder "dccw.exe.Local" will be looked for in "C:\Windows\SysWOW64\" directory, instead of "C:\Windows\System32\", but also the targeted "GdiPlus.dll" will be a 32 bits DLL, which implies that it will be looked for in a folder that matches with that name pattern "C:\Windows\WinSxS\x86_microsoft.windows.gdiplus_*". However, if it is executed in a 32 bits Windows system, the exploit will work as expected.<br>
+
 Finally, it is important to remark that we need to consider all the paths that matches with the pattern "C:\Windows\WinSxS\x86_microsoft.windows.gdiplus_*" when the DLL hijack is performed in order to assure a 100% of effectiveness.</p>
 
 <h4>1.3.4. Malicious DLL</h4>
 <p align="justify">To execute a process with high integrity we need to develop a DLL that invokes it via DLL hijacking. However, it is not simple as it looks, because, if we only do that, neither "dccw.exe" nor our code will be executed. This is because "dccw.exe" depends on some functions of "GdiPlus.dll", so we need to implement such functions or redirect the execution to the legit DLL.<br>
+
 The best option is forwarding the execution to the legit DLL, because in this way the size of our DLL will be lower. To do so, we use the program "ExportsToC++" to port all exports of "GdiPlus.dll" to C++ language, this will be implemented in our DLL.<br>
+
 Now, it seems that the problem has been fixed, but if we forward the execution to a specific "GdiPlus.dll" in C:\Windows\WinSxS\", the DLL will work only in specific systems, due to the name of the internal folders of "WinSxS" changes every Windows build. To overcome this problem, we came up with an elegant solution, forwarding the execution to "C:\Windows\System32\GdiPlus.dll", due to the fact that the path is the same in all Windows versions.<br>
+
 The last thing we have to do is stopping the execution of "dccw.exe" after executing our malicious code so as to avoid the window opening of that process.<br>
+
 Now, once we have developed our malicious DLL, we need to drop it in the targeted machine. To do so, our DLL has been compressed and "base64" encoded into the exploit, so that can be decoded and decompressed during its execution to drop it as expected.<br>
+
 Finally, our crafted "GdiPlus.dll" is copied to the targeted location using "IFileOperation" COM object as previously mentioned.</p>
 
 <h4>1.3.5. Detection Avoidance</h4>
@@ -68,15 +77,15 @@ Finally, our crafted "GdiPlus.dll" is copied to the targeted location using "IFi
 
 <h2>2. Requirements</h2>
 To get a successfully execution of the exploit the targeted machine must comply the following requirements:<br>
-		* Currently, it must be a Windows 10, no matter what build version (it is expected that the exploit will work also in Windows 7).<br>
-		* The UAC settings must not be set to "Always notify".<br>
-		* The compromised user must be in the "Administrator's group".<br>
-		* The architecture must be verified before executing the exploit, if not, it could leave traces in the targeted machine.
+  - Currently, it must be a Windows 10, no matter what build version (it is expected that the exploit will work also in Windows 7).<br>
+  - The UAC settings must not be set to "Always notify".<br>
+  - The compromised user must be in the "Administrator's group".<br>
+  - The architecture must be verified before executing the exploit, if not, it could leave traces in the targeted machine.
 
 <h2>3. Usage</h2>
 <p align="justify">To execute the exploit you must be sure that the targeted machine meets the <a href="https://github.com/L3cr0f/DccwBypassUAC#2-requirements">requirements</a>. Also, you will have to point out the Windows architecture as argument, whether it is "x86" or "x64":</p>
-		- C:\Users\L3cr0f> DccwBypassUAC.exe x64<br>
-		- C:\Users\L3cr0f> DccwBypassUAC.exe x86<br>
+  - C:\Users\L3cr0f> DccwBypassUAC.exe x64<br>
+  - C:\Users\L3cr0f> DccwBypassUAC.exe x86<br>
 <br>
 
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/bypass_executed.png">
@@ -86,7 +95,7 @@ To get a successfully execution of the exploit the targeted machine must comply 
 
 <h2>5. Acknowledgements</h2>
 To develop the exploit, I have based on those created by:<br>
-		* Fuzzysecurity: https://github.com/FuzzySecurity/PowerShell-Suite/tree/master/Bypass-UAC.<br>
-		* Cn33liz: https://github.com/Cn33liz/TpmInitUACBypass.<br>
-		* hFireF0X: https://github.com/hfiref0x/UACME.<br>
+  - Fuzzysecurity: https://github.com/FuzzySecurity/PowerShell-Suite/tree/master/Bypass-UAC.<br>
+  - Cn33liz: https://github.com/Cn33liz/TpmInitUACBypass.<br>
+  - hFireF0X: https://github.com/hfiref0x/UACME.<br>
 Many thanks to you!
