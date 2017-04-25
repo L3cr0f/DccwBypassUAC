@@ -1,7 +1,7 @@
 <h1>DccwBypassUAC</h1>
 <p align="justify">This exploit abuses the functionality of "dccw.exe" by means of a derivative Leo's Davidson "Bypass UAC" method so as to obtain an administrator shell without prompting for consent. It supports "x86" and "x64" architectures. Moreover, it has been successfully tested on Windows 10 14393, Windows 10 15031 and Windows 10 15062.
 
-If you want to see how execute the script, take a look to the <a href="https://github.com/L3cr0f/DccwBypassUAC#3-usage">usage</a></p>.
+If you want to see how execute the script, take a look to the <a href="https://github.com/L3cr0f/DccwBypassUAC#3-usage">usage</a>.</p>
 
 In the following days more updates will be uploaded, even a Metasploit version.
 <br>
@@ -68,15 +68,15 @@ Finally, our crafted "GdiPlus.dll" is copied to the targeted location using "IFi
 
 <h2>2. Requirements</h2>
 To get a successfully execution of the exploit the targeted machine must comply the following requirements:<br>
-* Currently, it must be a Windows 10, no matter what build version (it is expected that the exploit will work also in Windows 7).<br>
-* The UAC settings must not be set to "Always notify".<br>
-* The compromised user must be in the "Administrator's group".<br>
-* The architecture must be verified before executing the exploit, if not, it could leave traces in the targeted machine.
+		* Currently, it must be a Windows 10, no matter what build version (it is expected that the exploit will work also in Windows 7).<br>
+		* The UAC settings must not be set to "Always notify".<br>
+		* The compromised user must be in the "Administrator's group".<br>
+		* The architecture must be verified before executing the exploit, if not, it could leave traces in the targeted machine.
 
 <h2>3. Usage</h2>
 <p align="justify">To execute the exploit you must be sure that the targeted machine meets the <a href="https://github.com/L3cr0f/DccwBypassUAC#2-requirements">requirements</a>. Also, you will have to point out the Windows architecture as argument, whether it is "x86" or "x64":</p>
-&emsp;* C:\Users\L3cr0f> DccwBypassUAC.exe x64<br>
-&emsp;* C:\Users\L3cr0f> DccwBypassUAC.exe x86<br>
+		- C:\Users\L3cr0f> DccwBypassUAC.exe x64<br>
+		- C:\Users\L3cr0f> DccwBypassUAC.exe x86<br>
 <br>
 
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/bypass_executed.png">
@@ -86,7 +86,7 @@ To get a successfully execution of the exploit the targeted machine must comply 
 
 <h2>5. Acknowledgements</h2>
 To develop the exploit, I have based on those created by:<br>
-&emsp;* Fuzzysecurity: https://github.com/FuzzySecurity/PowerShell-Suite/tree/master/Bypass-UAC.<br>
-&emsp;* Cn33liz: https://github.com/Cn33liz/TpmInitUACBypass.<br>
-&emsp;* hFireF0X: https://github.com/hfiref0x/UACME.<br>
+		* Fuzzysecurity: https://github.com/FuzzySecurity/PowerShell-Suite/tree/master/Bypass-UAC.<br>
+		* Cn33liz: https://github.com/Cn33liz/TpmInitUACBypass.<br>
+		* hFireF0X: https://github.com/hfiref0x/UACME.<br>
 Many thanks to you!
