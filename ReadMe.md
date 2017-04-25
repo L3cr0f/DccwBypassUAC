@@ -1,7 +1,7 @@
 <h1>DccwBypassUAC</h1>
 <p align="justify">This exploit abuses the functionality of "dccw.exe" by means of a derivative Leo's Davidson "Bypass UAC" method so as to obtain an administrator shell without prompting for consent. It supports "x86" and "x64" architectures. Moreover, it has been successfully tested on Windows 10 14393, Windows 10 15031 and Windows 10 15062.
 
-If you want to see how execute the script, take a look to the <a href="https://github.com/L3cr0f/DccwBypassUAC#3-usage">usage</a></p>
+If you want to see how execute the script, take a look to the <a href="https://github.com/L3cr0f/DccwBypassUAC#3-usage">usage</a></p>.
 
 In the following days more updates will be uploaded, even a Metasploit version.
 <br>
@@ -41,7 +41,7 @@ Now, if we execute "dccw.exe" we will see that it has found the folder "dccw.exe
 <p align="justify">At this point, we already know that we can perform a bypass UAC on Windows 10 abusing "dccw.exe", but how?</p>
 
 <h4>1.3.1. Method</h4>
-<p align="justify">Well, we can adapt the method developed by <a href="https://www.pretentiousname.com/misc/win7_uac_whitelist2.html">Leo Davidson</a> to exploit the discovered vulnerability. The problem of that method is the process injection that is performed to invoke the "IFileOperation" COM object, which can be detected by some antivirus software, so a better approach to use it is that one called "Masquerade PEB" developed by <a href="https://www.fuzzysecurity.com/tutorials/27.html">FuzzySecurity</a> and used by Cn33liz in its own bypass UAC.<br>
+<p align="justify">Well, we can adapt the method developed by <a href="https://www.pretentiousname.com/misc/win7_uac_whitelist2.html" target="_blank">Leo Davidson</a> to exploit the discovered vulnerability. The problem of that method is the process injection that is performed to invoke the "IFileOperation" COM object, which can be detected by some antivirus software, so a better approach to use it is that one called "Masquerade PEB" developed by <a href="https://www.fuzzysecurity.com/tutorials/27.html" target="_blank">FuzzySecurity</a> and used by Cn33liz in its own bypass UAC.<br>
 Also, we have to modify the way "IFileOperation" is invoked in newer Windows 10 versions, since Leo Davidson method triggers UAC from build 15002. So the way we have to invoke such operation is the same as the original, but without the operation flags "FOF_SILENT", "FOFX_SHOWELEVATIONPROMPT" and "FOF_NOERRORUI".</p>
 
 <h4>1.3.2.Initial Checks</h4>
@@ -67,10 +67,10 @@ Finally, our crafted "GdiPlus.dll" is copied to the targeted location using "IFi
 <p align="justify">Finally, we need to determine which process we want to execute with high integrity. In our case, we chose the application "cmd.exe" because it allows us to perform as many operations as we want with high integrity, but in fact, we can execute whatever application we want.</p>
 
 <h2>2. Requirements</h2>
-To get a successfully execution of the exploit the targeted machine must comply the following requirements:
-* Currently, it must be a Windows 10, no matter what build version (it is expected that the exploit will work also in Windows 7).
-* The UAC settings must not be set to "Always notify".
-* The compromised user must be in the "Administrator's group".
+To get a successfully execution of the exploit the targeted machine must comply the following requirements:<br>
+* Currently, it must be a Windows 10, no matter what build version (it is expected that the exploit will work also in Windows 7).<br>
+* The UAC settings must not be set to "Always notify".<br>
+* The compromised user must be in the "Administrator's group".<br>
 * The architecture must be verified before executing the exploit, if not, it could leave traces in the targeted machine.
 
 <h2>3. Usage</h2>
