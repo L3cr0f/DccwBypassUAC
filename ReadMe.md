@@ -33,7 +33,6 @@ In the following days more updates will be uploaded, even a Metasploit version.
 
 <h3>1.2. Vulnerability Verification</h3>
 <p align="justify">Once we have found some error during the execution of an auto-elevate process we need to verify whether it can be abused or not. To do this we just will create the folder "dccw.exe.Local" in the desired path and into that folder we are going to create the folders located in "WinSxS" that could be invoked by the process, but without the DLL stored in that folders.</p>
-<br>
 <p align="justify">Now, if we execute "dccw.exe" we will see that it has found the folder "dccw.exe.Local" and one of the "WinSxS" folders, but not the desired DLL, something that throws an error. This is what we expected, due to that situation can be exploited by an attacker by means of a "DLL hijacking" and then, executing malicious code with high integrity.</p>
 
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_vuln_checking.png">
@@ -43,30 +42,22 @@ In the following days more updates will be uploaded, even a Metasploit version.
 
 <h4>1.3.1. Method</h4>
 <p align="justify">Well, we can adapt the method developed by <a href="https://www.pretentiousname.com/misc/win7_uac_whitelist2.html" target="_blank">Leo Davidson</a> to exploit the discovered vulnerability. The problem of that method is the process injection that is performed to invoke the "IFileOperation" COM object, which can be detected by some antivirus software, so a better approach to use it is that one called "Masquerade PEB" developed by <a href="https://www.fuzzysecurity.com/tutorials/27.html" target="_blank">FuzzySecurity</a> and used by Cn33liz in its own bypass UAC.</p>
-<br>
 <p align="justify">Also, we have to modify the way "IFileOperation" is invoked in newer Windows 10 versions, since Leo Davidson method triggers UAC from build 15002. So the way we have to invoke such operation is the same as the original, but without the operation flags "FOF_SILENT", "FOFX_SHOWELEVATIONPROMPT" and "FOF_NOERRORUI".</p>
 
 <h4>1.3.2.Initial Checks</h4>
 <p align="justify">Before executing the exploit, it is important to check some aspects to not execute it unsuccessfully and therefore trigger some alarms. The first thing we check is the Windows build version, since some versions do not support the exploit (those with a build version lower than 7000). After that, we verify that we do not have administrator rights yet, if it is not the case, there is no reason to execute the script. Then, we check the UAC settings so as to confirm that it is not set to "Always notify", since if it were set to that value, our exploit would be useless. Finally, we have to verify whether the exploit will be executed in a 32 bits or in a 64 bits Windows machine. This final checking is performed manually.</p>
 
 <h4>1.3.3. Interoperability</h4>
-<p align="justify">When an exploit is developed is important that can work in as many systems as possible, this includes 32 bits Windows systems. To achieve this, we need to compile our exploit for such systems, since we can also execute it in 64 bits systems.<\p>
-<br>
+<p align="justify">When an exploit is developed is important that can work in as many systems as possible, this includes 32 bits Windows systems. To achieve this, we need to compile our exploit for such systems, since we can also execute it in 64 bits systems.</p>
 <p align="justify">When our 32 bits exploit is executed in a 64 bits Windows machine, the way "dccw.exe" operates is a bit different due to the invocation of WOW64 (Windows subsystem that allows 64 bits machines to run 32 bits applications). This means the folder "dccw.exe.Local" will be looked for in "C:\Windows\SysWOW64\" directory, instead of "C:\Windows\System32\", but also the targeted "GdiPlus.dll" will be a 32 bits DLL, which implies that it will be looked for in a folder that matches with that name pattern "C:\Windows\WinSxS\x86_microsoft.windows.gdiplus_*". However, if it is executed in a 32 bits Windows system, the exploit will work as expected.</p>
-<br>
 <p align="justify">Finally, it is important to remark that we need to consider all the paths that matches with the pattern "C:\Windows\WinSxS\x86_microsoft.windows.gdiplus_*" when the DLL hijack is performed in order to assure a 100% of effectiveness.</p>
 
 <h4>1.3.4. Malicious DLL</h4>
 <p align="justify">To execute a process with high integrity we need to develop a DLL that invokes it via DLL hijacking. However, it is not simple as it looks, because, if we only do that, neither "dccw.exe" nor our code will be executed. This is because "dccw.exe" depends on some functions of "GdiPlus.dll", so we need to implement such functions or redirect the execution to the legit DLL.</p>
-<br>
 <p align="justify">The best option is forwarding the execution to the legit DLL, because in this way the size of our DLL will be lower. To do so, we use the program "ExportsToC++" to port all exports of "GdiPlus.dll" to C++ language, this will be implemented in our DLL.</p>
-<br>
 <p align="justify">Now, it seems that the problem has been fixed, but if we forward the execution to a specific "GdiPlus.dll" in C:\Windows\WinSxS\", the DLL will work only in specific systems, due to the name of the internal folders of "WinSxS" changes every Windows build. To overcome this problem, we came up with an elegant solution, forwarding the execution to "C:\Windows\System32\GdiPlus.dll", due to the fact that the path is the same in all Windows versions.</p>
-<br>
 <p align="justify">The last thing we have to do is stopping the execution of "dccw.exe" after executing our malicious code so as to avoid the window opening of that process.</p>
-<br>
 <p align="justify">Now, once we have developed our malicious DLL, we need to drop it in the targeted machine. To do so, our DLL has been compressed and "base64" encoded into the exploit, so that can be decoded and decompressed during its execution to drop it as expected.</p>
-<br>
 <p align="justify">Finally, our crafted "GdiPlus.dll" is copied to the targeted location using "IFileOperation" COM object as previously mentioned.</p>
 
 <h4>1.3.5. Detection Avoidance</h4>
