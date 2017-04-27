@@ -16,7 +16,7 @@
 #pragma comment(lib, "crypt32.lib") 
 #pragma comment(lib, "Cabinet.lib")
 
-const int MINIMUM_BUILD_VERSION = 7000;
+const int MINIMUM_BUILD_VERSION = 7600;
 const DWORD ALWAYS_NOTIFY_UAC_LEVEL = 2;
 
 BOOL MasqueradePEB() {
