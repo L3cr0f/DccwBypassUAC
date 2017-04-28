@@ -1,5 +1,5 @@
 <h1>DccwBypassUAC</h1>
-<p align="justify">This exploit abuses the functionality of "dccw.exe" by means of a derivative Leo's Davidson "Bypass UAC" method so as to obtain an administrator shell without prompting for consent. It supports "x86" and "x64" architectures. Moreover, it has been successfully tested on Windows 10 14393, Windows 10 15031 and Windows 10 15062.
+<p align="justify">This exploit abuses the functionality of "dccw.exe" by means of a derivative Leo's Davidson "Bypass UAC" method so as to obtain an administrator shell without prompting for consent. It supports "x86" and "x64" architectures. Moreover, it has been successfully tested on Windows 8.1 9600, Windows 10 14393, Windows 10 15031 and Windows 10 15062.
 
 If you want to see how execute the script, take a look to the <a href="https://github.com/L3cr0f/DccwBypassUAC#3-usage">usage</a>.</p>
 
@@ -68,7 +68,7 @@ In the following days more updates will be uploaded, even a Metasploit version.
 
 <h2>2. Requirements</h2>
 To get a successfully execution of the exploit the targeted machine must comply the following requirements:<br>
-&emsp;- Currently, it must be a Windows 10, no matter what build version (it is expected that the exploit will work also in Windows 7).<br>
+&emsp;- Currently, it must be a Windows 8 or 10, no matter what build version (it is expected that the bypass UAC method will work also in Windows 7, but, at this moment, not this exploit).<br>
 &emsp;- The UAC settings must not be set to "Always notify".<br>
 &emsp;- The compromised user must be in the "Administrator's group".<br>
 &emsp;- The architecture must be verified before executing the exploit, if not, it could leave traces in the targeted machine.
