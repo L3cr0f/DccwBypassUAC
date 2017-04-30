@@ -18,6 +18,7 @@
 
 const int MINIMUM_BUILD_VERSION = 7600;
 const DWORD ALWAYS_NOTIFY_UAC_LEVEL = 2;
+const DWORD DEFAULT_UAC_LEVEL = 5;
 
 BOOL MasqueradePEB() {
 
@@ -394,7 +395,7 @@ std::wstring getBuildNumber() {
 	HKEY hKey;
 	if (RegOpenKeyEx(root, key.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
 		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...");
-		return L"7000";
+		return std::to_wstring(MINIMUM_BUILD_VERSION);
 	}
 
 	DWORD type;
@@ -403,20 +404,20 @@ std::wstring getBuildNumber() {
 	{
 		RegCloseKey(hKey);
 		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...");
-		return L"7000";
+		return std::to_wstring(MINIMUM_BUILD_VERSION);
 	}
 
 	if (type != REG_SZ) {
 		RegCloseKey(hKey);
 		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...");
-		return L"7000";
+		return std::to_wstring(MINIMUM_BUILD_VERSION);
 	}
 
 	std::wstring value(cbData / sizeof(wchar_t), L'\0');
 	if (RegQueryValueEx(hKey, name.c_str(), NULL, NULL, reinterpret_cast<LPBYTE>(&value[0]), &cbData) != ERROR_SUCCESS)	{
 		RegCloseKey(hKey);
 		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...");
-		return L"7000";
+		return std::to_wstring(MINIMUM_BUILD_VERSION);
 	}
 
 	RegCloseKey(hKey);
@@ -435,7 +436,7 @@ DWORD getUACLevel() {
 	HKEY hKey;
 	if (RegOpenKeyEx(root, key.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
 		wprintf(L"Error! The UAC level cannot be determined! Trying the default one...");
-		return 5;
+		return DEFAULT_UAC_LEVEL;
 	}
 
 	DWORD type;
@@ -445,7 +446,7 @@ DWORD getUACLevel() {
 	if (RegQueryValueEx(hKey, name.c_str(), NULL, NULL, reinterpret_cast<LPBYTE>(&value), &cbData) != ERROR_SUCCESS) {
 		RegCloseKey(hKey);
 		wprintf(L"Error! The UAC level cannot be determined! Trying the default one...");
-		return 5;
+		return DEFAULT_UAC_LEVEL;
 	}
 
 	RegCloseKey(hKey);
