@@ -79,7 +79,9 @@ To get a successfully execution of the exploit the targeted machine must comply 
 &emsp;- C:\Users\L3cr0f> DccwBypassUAC.exe x86<br>
 <br>
 
-<img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/bypass_executed.png">
+<p align="center">
+<img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/DccwBypassUAC_PoC.gif">
+</p>
 
 <h2>4. Disclaimer</h2>
 <p align="justify">This exploit has been developed to show how an attacker could gain privileges into a system, not to use it for malicious purposes. This means that I do not take any responsibility if someone uses it to perform criminal activities.</p>
