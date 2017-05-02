@@ -74,7 +74,7 @@ To get a successfully execution of the exploit the targeted machine must comply 
 &emsp;- The architecture must be verified before executing the exploit, if not, it could leave traces in the targeted machine.
 
 <h2>3. Usage</h2>
-<p align="justify">To execute the exploit you must be sure that the targeted machine meets the <a href="https://github.com/L3cr0f/DccwBypassUAC#2-requirements">requirements</a>. Also, you will have to point out the Windows architecture as argument, whether it is "x86" or "x64":</p>
+<p align="justify">To execute the exploit you must be sure that the targeted machine meets the <a href="https://github.com/L3cr0f/DccwBypassUAC#2-requirements">requirements</a>. Also, you will have to point out its processor architecture as argument, whether it is "x86" or "x64":</p>
 &emsp;- C:\Users\L3cr0f> DccwBypassUAC.exe x64<br>
 &emsp;- C:\Users\L3cr0f> DccwBypassUAC.exe x86<br>
 <br>
