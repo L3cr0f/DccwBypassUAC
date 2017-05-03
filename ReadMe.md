@@ -56,7 +56,7 @@ In the following days more updates will be uploaded, even a Metasploit version.
 <p align="justify">The best option is forwarding the execution to the legit DLL, because in this way the size of our DLL will be lower. To do so, we use the program "ExportsToC++" to port all exports of "GdiPlus.dll" to C++ language. Now, the problem is the huge amount of exports "GdiPlus.dll" have (631 to be precise) and "dccw.exe" does not import all of them, but a few. To know which functions import "dccw.exe" from "GdiPlus.dll" we reverse engineering the program with "IDA Pro". Finally, only 15 functions are imported from "GdiPlus.dll", so we only need to include those in our DLL.</p>
 
 <p align="center">
-<img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/DccwBypassUAC_PoC.gif">
+<img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_GdiPlus.png">
 </p>
 
 <p align="justify">Now, it seems that the problem has been fixed, but if we forward the execution to a specific "GdiPlus.dll" in C:\Windows\WinSxS\", the DLL will work only in specific systems, due to the name of the internal folders of "WinSxS" changes every Windows build. To overcome this problem, we came up with an elegant solution, forwarding the execution to "C:\Windows\System32\GdiPlus.dll", due to the fact that the path is the same in all Windows versions.</p>
