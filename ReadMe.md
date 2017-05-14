@@ -91,11 +91,11 @@ To get a successfully execution of the exploit the targeted machine must comply 
 <h2>5. Microsoft Position</h2>
 <p align="justify"><b>User Access Control (UAC)</b> is a technology introduced with Windows Vista that provides a method of separating standard user privileges and tasks from those that require Administrator access. If a Standard User is using the system and attempts to perform an action for which the user has no authorization, a prompt from Windows appears and asks the Administrator account’s password. If an Administrator is using the system and attempts to do the same task, there is only a warning prompt. That prompt is known as a “Consent Prompt” because the administrator is only asked to agree to the action before proceeding. <b>A weakness that would allow to bypass the “Consent Prompt” is not considered a security vulnerability, since that is not considered a security boundary</b>.<p>
 
-<p align="justify">However, Microsoft also states that <b>"User Account Control (UAC) is a fundamental component of Microsoft's overall security vision"</b></p>
+<p align="justify">However, Microsoft also states that <b>"User Account Control (UAC) is a fundamental component of Microsoft's overall security vision</b>".</p>
 
 <p align="justify">Sources:<br>
-&emsp;- <a href="https://msdn.microsoft.com/en-us/library/cc751383.aspx">Definition of a security vulnerability</a><br>
-&emsp;- <a href="https://docs.microsoft.com/en-us/windows/access-protection/user-account-control/how-user-account-control-works">How User Account Control works</a></p>
+&emsp;- <a href="https://msdn.microsoft.com/en-us/library/cc751383.aspx">Definition of a security vulnerability</a>.<br>
+&emsp;- <a href="https://docs.microsoft.com/en-us/windows/access-protection/user-account-control/how-user-account-control-works">How User Account Control works</a>.</p>
 
 <h2>6. Acknowledgements</h2>
 To develop the exploit, I have based on those created by:<br>
