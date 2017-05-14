@@ -88,7 +88,12 @@ To get a successfully execution of the exploit the targeted machine must comply 
 <h2>4. Disclaimer</h2>
 <p align="justify">This exploit has been developed to show how an attacker could gain privileges into a system, not to use it for malicious purposes. This means that I do not take any responsibility if someone uses it to perform criminal activities.</p>
 
-<h2>5. Acknowledgements</h2>
+<h2>5. Microsoft Position</h2>
+<p align="justify"><b>User Access Control (UAC)</b> is a technology introduced with Windows Vista that provides a method of separating standard user privileges and tasks from those that require Administrator access. If a Standard User is using the system and attempts to perform an action for which the user has no authorization, a prompt from Windows appears and asks the Administrator account’s password. If an Administrator is using the system and attempts to do the same task, there is only a warning prompt. That prompt is known as a “Consent Prompt” because the administrator is only asked to agree to the action before proceeding. <b>A weakness that would allow to bypass the “Consent Prompt” is not considered a security vulnerability, since that is not considered a security boundary</b>.<p>
+
+<p align="justify">Source: <a href="https://msdn.microsoft.com/en-us/library/cc751383.aspx">Definition of a security vulnerability</a>
+
+<h2>6. Acknowledgements</h2>
 To develop the exploit, I have based on those created by:<br>
 &emsp;- Fuzzysecurity: https://github.com/FuzzySecurity/PowerShell-Suite/tree/master/Bypass-UAC.<br>
 &emsp;- Cn33liz: https://github.com/Cn33liz/TpmInitUACBypass.<br>
