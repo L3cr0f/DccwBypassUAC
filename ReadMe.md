@@ -93,8 +93,8 @@ To get a successfully execution of the exploit the targeted machine must comply 
 
 <p align="justify">However, Microsoft also states that <b>"User Account Control (UAC) is a fundamental component of Microsoft's overall security vision"</b></p>
 
-<p align="justify">Sources:
-&emsp;- <a href="https://msdn.microsoft.com/en-us/library/cc751383.aspx">Definition of a security vulnerability</a>
+<p align="justify">Sources:<br>
+&emsp;- <a href="https://msdn.microsoft.com/en-us/library/cc751383.aspx">Definition of a security vulnerability</a><br>
 &emsp;- <a href="https://docs.microsoft.com/en-us/windows/access-protection/user-account-control/how-user-account-control-works">How User Account Control works</a></p>
 
 <h2>6. Acknowledgements</h2>
