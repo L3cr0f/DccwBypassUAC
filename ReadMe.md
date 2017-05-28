@@ -72,7 +72,7 @@ In the following days more updates will be uploaded, even a Metasploit version.
 
 <h2>2. Requirements</h2>
 To get a successfully execution of the exploit the targeted machine must comply the following requirements:<br>
-&emsp;- Currently, it must be a Windows 8 or 10, no matter what build version (it is expected that the bypass UAC method will work also in Windows 7, but, at this moment, not this exploit).<br>
+&emsp;- It must be a Windows 8 or 10, no matter what build version.<br>
 &emsp;- The UAC settings must not be set to "Always notify".<br>
 &emsp;- The compromised user must belong to the "Administrators group".<br>
 
