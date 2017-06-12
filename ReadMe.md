@@ -1,5 +1,5 @@
 <h1>DccwBypassUAC</h1>
-<p align="justify">This exploit abuses the functionality of "dccw.exe" by means of a derivative Leo's Davidson "Bypass UAC" method so as to obtain an administrator shell without prompting for consent. It supports "x86" and "x64" architectures. Moreover, it has been successfully tested on Windows 8.1 9600, Windows 10 14393, Windows 10 15031 and Windows 10 15062.
+<p align="justify">This exploit abuses the way "WinSxS" is managed by "dccw.exe" by means of a derivative Leo's Davidson "Bypass UAC" method so as to obtain an administrator shell without prompting for consent. It supports "x86" and "x64" architectures. Moreover, it has been successfully tested on Windows 8.1 9600, Windows 10 14393, Windows 10 15031 and Windows 10 15062.
 
 If you want to see how execute the script, take a look at the <a href="https://github.com/L3cr0f/DccwBypassUAC#3-usage">usage</a> section.</p>
 
