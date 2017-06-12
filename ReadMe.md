@@ -85,10 +85,15 @@ To get a successfully execution of the exploit the targeted machine must comply 
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/DccwBypassUAC_PoC.gif">
 </p>
 
-<h2>4. Disclaimer</h2>
+<h2>5. Metasploit Module</h2>
+<p align="justify">The Metasploit module of this PoC use DLL injection instead of Masquerading PEB and it is available in:</p>
+&emsp;- https://github.com/L3cr0f/Metasploit-modules/blob/master/bypassuac_injection_winsxs.rb
+<p align="justify"><b>Warning! This module is in the process of being implemented in Metasploit, so currently will not work since many dependencies are not currently included in the framework.</b></p>
+
+<h2>5. Disclaimer</h2>
 <p align="justify">This exploit has been developed to show how an attacker could gain privileges into a system, not to use it for malicious purposes. This means that I do not take any responsibility if someone uses it to perform criminal activities.</p>
 
-<h2>5. Microsoft Position</h2>
+<h2>6. Microsoft Position</h2>
 <p align="justify"><b>User Access Control (UAC)</b> is a technology introduced with Windows Vista that provides a method of separating standard user privileges and tasks from those that require Administrator access. If a Standard User is using the system and attempts to perform an action for which the user has no authorization, a prompt from Windows appears and asks the Administrator account’s password. If an Administrator is using the system and attempts to do the same task, there is only a warning prompt. That prompt is known as a "Consent Prompt" because the administrator is only asked to agree to the action before proceeding. <b>A weakness that would allow to bypass the "Consent Prompt" is not considered a security vulnerability, since that is not considered a security boundary</b>.<p>
 
 <p align="justify">However, Microsoft also states that "<b>User Account Control (UAC) is a fundamental component of Microsoft's overall security vision</b>".</p>
@@ -97,7 +102,7 @@ To get a successfully execution of the exploit the targeted machine must comply 
 &emsp;- <a href="https://msdn.microsoft.com/en-us/library/cc751383.aspx">Definition of a security vulnerability</a>.<br>
 &emsp;- <a href="https://docs.microsoft.com/en-us/windows/access-protection/user-account-control/how-user-account-control-works">How User Account Control works</a>.</p>
 
-<h2>6. Acknowledgements</h2>
+<h2>7. Acknowledgements</h2>
 To develop the exploit, I have based on those created by:<br>
 &emsp;- Fuzzysecurity: https://github.com/FuzzySecurity/PowerShell-Suite/tree/master/Bypass-UAC.<br>
 &emsp;- Cn33liz: https://github.com/Cn33liz/TpmInitUACBypass.<br>
