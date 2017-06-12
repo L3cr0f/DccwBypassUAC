@@ -87,7 +87,7 @@ To get a successfully execution of the exploit the targeted machine must comply 
 
 <h2>5. Metasploit Module</h2>
 <p align="justify">The Metasploit module of this PoC use DLL injection instead of Masquerading PEB and it is available in:</p>
-&emsp;- https://github.com/L3cr0f/Metasploit-modules/blob/master/bypassuac_injection_winsxs.rb
+&emsp;- https://github.com/L3cr0f/Metasploit-modules/blob/master/bypassuac_injection_winsxs.rb<br>
 <p align="justify"><b>Warning! This module is in the process of being implemented in Metasploit, so currently will not work since many dependencies are not currently included in the framework.</b></p>
 
 <h2>5. Disclaimer</h2>
