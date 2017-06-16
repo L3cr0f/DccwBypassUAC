@@ -7,32 +7,32 @@ In the following days more updates will be uploaded, even a Metasploit version.
 <br>
 <h2>1. Development of a New Bypass UAC</h2>
 <h3>1.1. Vulnerability Search</h3>
-<p align="justify">To develop a new bypass UAC, first we have to find a vulnerability on the system and, to be more precise, a vulnerability in an auto-elevate process. To get a list of such processes we used the <i>Sysinternals</i> tool <i>Strings</i>. After that, we could see some auto-elevate processes like "sysprep.exe", "cliconfig.exe", "inetmgr.exe", "consent.exe" or "CompMgmtLauncher.exe" that had (some of them still have) vulnerabilities that allow the execution of a "bypass UAC". So we start to study how other auto-elevate processes worked with the <i>Sysinternals</i> application <i>Process Monitor</i> (<i>ProcMon</i>), but focusing on the process "dccw.exe".</p>
+<p align="justify">To develop a new bypass UAC, first we have to find a vulnerability on the system and, to be more precise, a vulnerability in an auto-elevate process. To get a list of such processes we used the <i>Sysinternals'</i> tool called <i>Strings</i>. After that, we could see some auto-elevate processes like "sysprep.exe", "cliconfig.exe", "inetmgr.exe", "consent.exe" or "CompMgmtLauncher.exe" that had (some of them still have) vulnerabilities that allow the execution of a "bypass UAC". So, we started to study how other auto-elevate processes worked with the <i>Sysinternals'</i> application called <i>Process Monitor</i> (<i>ProcMon</i>), but focusing on "dccw.exe" process.</p>
 
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/AutoElevate_Processes.png">
 
-<p align="justify">However, before starting with <i>ProcMon</i>, first we check the manifest of such applications with another <i>Sysinternals</i> application called <i>Sigcheck</i>, and, of course, in our case "dccw.exe" is an auto-elevate process.</p>
+<p align="justify">However, before starting with <i>ProcMon</i>, first we checked the manifest of such applications with another <i>Sysinternals'</i> application called <i>Sigcheck</i>, and, of course, in our case "dccw.exe" is an auto-elevate process.</p>
 
 <p align="center">
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/autoElevation_confirmed.png">
 </p>
 
-<p align="justify">Then, we could start the execution flow of "dccw.exe" with <i>ProcMon</i> to see in something strange occurs, something we checked immediately. At some point, if we have executed "dccw.exe" as a 64 bits process in a 64 bits Windows machine it looks for the directory "C:\Windows\System32\dccw.exe.Local\" to load a specific DLL called "GdiPlus.dll", the same as it were executed in a 32 bits Windows machine, whereas if we execute it as a 32 bits in the same machine, the process will look for the directory "C:\Windows\SysWOW64\dccw.exe.Local\". Then, due to the fact that it does not exist (fig …), the process always looks for a folder in the path "C:\Windows\WinSxS\" to get the desired DLL, this folder has a name with the following structure:</p>
+<p align="justify">Then, we could start to follow the execution flow of "dccw.exe" with <i>ProcMon</i> to see fn something strange occurs, something we checked immediately. At some point, if we have executed "dccw.exe" as a 64 bits process in a 64 bits Windows machine it looks for the directory "C:\Windows\System32\dccw.exe.Local\" to load a specific DLL called "GdiPlus.dll", the same as it were executed in a 32 bits Windows machine, whereas if we execute it as a 32 bits in the same machine, the process will look for the directory "C:\Windows\SysWOW64\dccw.exe.Local\". Then, due to the fact that it does not exist, the process always looks for a folder in the path "C:\Windows\WinSxS\" to get the desired DLL, this folder has a name with the following structure:</p>
 [architecture]_microsoft.windows.gdiplus_[sequencial_code]_[Windows_version]_none_[sequencial_number]<br>
 <br>
 
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_dotLocal_notFound.png">
 
 
-<p align="justify">If we take a look into "WinSxS" we could see more than one folder that matches with this structure, this means that "dccw.exe" can load the desired DLL from any of these folders. The only thing we are sure is that if the application is invoked as a 32 bits process, the folder name will start with the string "x86", while if we execute it as a 64 bits process, its name will start with the string "amd64".</p>
+<p align="justify">If we take a look into "WinSxS" directory, we could see more than one folder that matches with this structure, this means that "dccw.exe" can load the desired DLL from any of these folders. The only thing we are sure is that if the application is invoked as a x86 process, the folder name will start with the string "x86", while if we execute it as a x64 process, its name will start with the string "amd64".</p>
 
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/gdiplus_folders.png">
 
 <p align="justify">This situation can be abused to perform a DLL hijacking and then execute code with high integrity without prompting for consent.</p>
 
 <h3>1.2. Vulnerability Verification</h3>
-<p align="justify">Once we have found some error during the execution of an auto-elevate process we need to verify whether it can be abused or not. To do this we just will create the folder "dccw.exe.Local" in the desired path and into that folder we are going to create the folders located in "WinSxS" that could be invoked by the process, but without the DLL stored in that folders.</p>
-<p align="justify">Now, if we execute "dccw.exe" we will see that it has found the folder "dccw.exe.Local" and one of the "WinSxS" folders, but not the desired DLL, something that throws an error. This is what we expected, due to that situation can be exploited by an attacker by means of a "DLL hijacking" and then, executing malicious code with high integrity.</p>
+<p align="justify">Once we have found one error during the execution of an auto-elevate process, we need to verify whether it can be abused or not. To do this, we just created the folder "dccw.exe.Local" in the desired path and, into that folder, we created the folders located in "WinSxS" that could be invoked by the process to load "GdiPlus.dll", but without such DLL.</p>
+<p align="justify">Now, if we execute "dccw.exe" we will see that the process has found the folder "dccw.exe.Local" and one of the "WinSxS" folders, but not the desired DLL, something that throws an error. This is what we expected, due to that situation can be exploited by an attacker as we mentioned before.</p>
 
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_vuln_checking.png">
 
@@ -40,11 +40,11 @@ In the following days more updates will be uploaded, even a Metasploit version.
 <p align="justify">At this point, we already know that we can perform a bypass UAC on Windows 10 abusing "dccw.exe", but how?</p>
 
 <h4>1.3.1. Method</h4>
-<p align="justify">Well, we can adapt the method developed by <a href="https://www.pretentiousname.com/misc/win7_uac_whitelist2.html" target="_blank">Leo Davidson</a> to exploit the discovered vulnerability. The problem of that method is the process injection that is performed to invoke the <i>IFileOperation</i> COM object, which can be detected by some antivirus software, so a better approach to use it is that one called <a href="https://www.fuzzysecurity.com/tutorials/27.html" target="_blank">Masquerade PEB</a> and used by <i>Cn33liz</i> in its own bypass UAC.</p>
+<p align="justify">The most used method to bypass UAC is that one developed by <a href="https://www.pretentiousname.com/misc/win7_uac_whitelist2.html" target="_blank">Leo Davidson</a>. However, it performs a process injection to invoke the <i>IFileOperation</i> COM object, which can be detected by some antivirus software, so a better approach to use it is that one called <a href="https://www.fuzzysecurity.com/tutorials/27.html" target="_blank">Masquerade PEB</a> used by <i>Cn33liz</i> in its own bypass UAC.</p>
 <p align="justify">Also, we have to modify the way <i>IFileOperation</i> is invoked in newer Windows 10 versions, since Leo Davidson method triggers UAC from build 15002. So, the way we have to invoke such operation is the same as the original, but without the operation flags "FOF_SILENT", "FOFX_SHOWELEVATIONPROMPT" and "FOF_NOERRORUI".</p>
 
 <h4>1.3.2.Initial Checks</h4>
-<p align="justify">Before executing the exploit, it is important to check some aspects to not execute it unsuccessfully and therefore trigger some alarms. The first thing we check is the Windows build version, since some versions are not vulnerable to our exploit (those with a build version lower than 7600). After that, we verify that we do not have administrator rights yet, if it is not the case, there is no reason to execute the script. Then, we check the UAC settings so as to confirm that it is not set to "Always notify", since if it were set to that value, our exploit would be useless. Finally, we verify if the user belongs to the Administrators group, because, if not, the exploit would be unsuccessful.</p>
+<p align="justify">Before executing the exploit, it is important to check some aspects to not execute it unsuccessfully and therefore trigger some alarms. The first thing we check is the Windows build version, since some versions are not vulnerable to our exploit (those with a build version lower than 7600). After that, we verify that we do not have administrator rights yet, if it is not the case, there is no reason to execute the script. Then, we check the UAC settings so as to confirm that it is not set to "Always notify", since if it were set to that value, our exploit would be useless. Finally, we verify if the user belongs to the administrators group, because, if not, the exploit would be unsuccessful.</p>
 
 <h4>1.3.3. Interoperability</h4>
 <p align="justify">When an exploit is developed is important that can work in as many systems as possible, this includes 32 bits Windows systems. To achieve this, we need to compile our exploit for such systems, since we can also execute it in 64 bits systems.</p>
@@ -52,23 +52,23 @@ In the following days more updates will be uploaded, even a Metasploit version.
 <p align="justify">Finally, it is important to remark that we need to consider all the paths that matches with the pattern "C:\Windows\WinSxS\x86_microsoft.windows.gdiplus_*" when the DLL hijack is performed in order to assure a 100% of effectiveness.</p>
 
 <h4>1.3.4. Malicious DLL</h4>
-<p align="justify">To execute a process with high integrity we need to develop a DLL that invokes it via DLL hijacking. However, it is not simple as it looks, because, if we only do that, neither "dccw.exe" nor our code will be executed. This is because "dccw.exe" depends on some functions of "GdiPlus.dll", so we need to implement such functions or redirect the execution to the legit DLL.</p>
-<p align="justify">The best option is forwarding the execution to the legit DLL, because in this way the size of our DLL will be lower. To do so, we use the program "ExportsToC++" to port all exports of "GdiPlus.dll" to C++ language. Now, the problem is the huge amount of exports "GdiPlus.dll" have (631 to be precise) and "dccw.exe" does not import all of them, but a few. To know which functions import "dccw.exe" from "GdiPlus.dll" we reverse engineering the program with "IDA Pro". Finally, only 15 functions are imported from "GdiPlus.dll", so we only need to include those in our DLL.</p>
+<p align="justify">To execute a process with high integrity we need to develop a DLL that will be invoked via DLL hijacking. However, it is not as simple as it looks, because if we only do that, neither "dccw.exe" nor our code will be executed. This is because "dccw.exe" depends on some functions of "GdiPlus.dll", so we need to implement or forward the execution of such functions to the legit DLL.</p>
+<p align="justify">The best option is forwarding the execution to the legit DLL, because in this way the size of our DLL will be lower. To do so, we used the program <i>ExportsToC++</i> to port all exports of "GdiPlus.dll" to C++ language. Now, the problem is the huge number of exports "GdiPlus.dll" have, 631 to be precise, Nevertheless, "dccw.exe" does not import all of them, but a few. To know which functions are imported by "dccw.exe" from "GdiPlus.dll" we reversed engineering it with "IDA Pro". Finally, only 15 functions are imported from "GdiPlus.dll", so we only need to include those in our DLL.</p>
 
 <p align="center">
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_GdiPlus.png">
 </p>
 
-<p align="justify">Now, it seems that the problem has been fixed, but if we forward the execution to a specific "GdiPlus.dll" in C:\Windows\WinSxS\", the DLL will work only in specific systems, due to the name of the internal folders of "WinSxS" changes every Windows build. To overcome this problem, we came up with an elegant solution, forwarding the execution to "C:\Windows\System32\GdiPlus.dll", due to the fact that the path is the same in all Windows versions.</p>
+<p align="justify">Now, it seems that the problem has been fixed, but if we forward the execution to a specific "GdiPlus.dll" in C:\Windows\WinSxS\", the DLL will work only in some systems, since the name of the internal folders of "WinSxS" changes every Windows build. To overcome this problem, we came up with an elegant solution, forwarding the execution to "C:\Windows\System32\GdiPlus.dll", due to the fact that the path is the same in all Windows 10 systems</p>
 <p align="justify">The last thing we have to do is stopping the execution of "dccw.exe" after executing our malicious code so as to avoid the window opening of that process.</p>
-<p align="justify">Now, once we have developed our malicious DLL, we need to drop it in the targeted machine. To do so, our DLL has been compressed and "base64" encoded into the exploit, so that can be decoded and decompressed during its execution to drop it as expected.</p>
+<p align="justify">Now, once we have developed our malicious DLL, we need to drop it in the targeted machine. To do so, our DLL has been compressed and "base64" encoded into the exploit, so that can be decoded and decompressed at runtime to drop it as expected.</p>
 <p align="justify">Finally, our crafted "GdiPlus.dll" is copied to the targeted location using <i>IFileOperation</i> COM object as previously mentioned.</p>
 
 <h4>1.3.5. Detection Avoidance</h4>
-<p align="justify">When an attacker compromises a system, it wants to stay undetected as much time as possible, this means removes every hint of the actions that it performs. Because of that, all the temporary files that are created during the execution of the exploit are removed when they are not needed anymore.</p>
+<p align="justify">When an attacker compromises a system, it wants to stay undetected as much time as possible, this means removing every trace of the actions that it performs. Because of that, all the temporary files that are created during the execution of the exploit are removed when they are not needed anymore.</p>
 
 <h4>1.3.6. Goal</h4>
-<p align="justify">Finally, we need to determine which process we want to execute with high integrity. In our case, we chose the application "cmd.exe" because it allows us to perform as many operations as we want with high integrity, but in fact, we can execute whatever application we want.</p>
+<p align="justify">Finally, we need to determine which process we want to execute at high integrity. In our case, we chose the application "cmd.exe" because it allows us to perform as many operations at high integrity as we want once we will have administrator rights, but, in fact, we can execute whatever application we want.</p>
 
 <h2>2. Requirements</h2>
 To get a successfully execution of the exploit the targeted machine must comply the following requirements:<br>
