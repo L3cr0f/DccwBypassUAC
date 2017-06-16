@@ -3,7 +3,6 @@
 
 If you want to see how to execute the script, take a look at the <a href="https://github.com/L3cr0f/DccwBypassUAC#3-usage">usage</a> section. Also, you can execute it in <a href="https://github.com/L3cr0f/DccwBypassUAC#4-metasploit-module">Metasploit</a> and getting a Meterpreter session with administrator rights.</p>
 
-<br>
 <h2>1. Development of a New Bypass UAC</h2>
 <h3>1.1. Vulnerability Search</h3>
 <p align="justify">To develop a new bypass UAC, first we have to find a vulnerability on the system and, to be more precise, a vulnerability in an auto-elevate process. To get a list of such processes we used the <i>Sysinternals'</i> tool called <i>Strings</i>. After that, we could see some auto-elevate processes like "sysprep.exe", "cliconfig.exe", "inetmgr.exe", "consent.exe" or "CompMgmtLauncher.exe" that had (some of them still have) vulnerabilities that allow the execution of a "bypass UAC". So, we started to study how other auto-elevate processes worked with the <i>Sysinternals'</i> application called <i>Process Monitor</i> (<i>ProcMon</i>), but focusing on "dccw.exe" process.</p>
