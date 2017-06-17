@@ -57,7 +57,7 @@ If you want to see how to execute the script, take a look at the <a href="https:
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/dccw_GdiPlus.png">
 </p>
 
-<p align="justify">Now, it seems that the problem has been fixed, but if we forward the execution to a specific "GdiPlus.dll" in C:\Windows\WinSxS\", the DLL will work only in some systems, since the name of the internal folders of "WinSxS" changes every Windows build. To overcome this problem, we came up with an elegant solution, forwarding the execution to "C:\Windows\System32\GdiPlus.dll", due to the fact that the path is the same in all Windows 10 systems</p>
+<p align="justify">Now, it seems that the problem has been fixed, but if we forward the execution to a specific "GdiPlus.dll" in C:\Windows\WinSxS\", the DLL will work only in some systems, since the name of the internal folders of "WinSxS" changes every Windows build. To overcome this problem, we came up with the idea of forwarding the execution to "C:\Windows\System32\GdiPlus.dll", due to the fact that the path is the same in all Windows 10 systems</p>
 <p align="justify">The last thing we have to do is stopping the execution of "dccw.exe" after executing our malicious code so as to avoid the window opening of that process.</p>
 <p align="justify">Now, once we have developed our malicious DLL, we need to drop it in the targeted machine. To do so, our DLL has been compressed and "base64" encoded into the exploit, so that can be decoded and decompressed at runtime to drop it as expected.</p>
 <p align="justify">Finally, our crafted "GdiPlus.dll" is copied to the targeted location using <i>IFileOperation</i> COM object as previously mentioned.</p>
