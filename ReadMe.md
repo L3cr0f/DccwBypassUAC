@@ -76,9 +76,11 @@ To get a successfully execution of the exploit the targeted machine must comply 
 
 <h2>3. Usage</h2>
 <p align="justify">To execute the exploit you must be sure that the targeted machine meets the <a href="https://github.com/L3cr0f/DccwBypassUAC#2-requirements">requirements</a>. Then, you simply have to execute the exploit like any other command-line script:</p>
-&emsp;- C:\Users\L3cr0f> DccwBypassUAC.exe
-<br>
-<br>
+
+```
+C:\Users\L3cr0f> DccwBypassUAC.exe
+```
+
 <p align="center">
 <img src="https://github.com/L3cr0f/DccwBypassUAC/blob/release/Pictures/DccwBypassUAC_PoC.gif">
 </p>
